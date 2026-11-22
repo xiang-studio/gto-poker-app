@@ -293,7 +293,7 @@ nav{padding-bottom:calc(6px + var(--sab))}
   </div>
   <div class="card">
     <h2>現在的狀況</h2>
-    <div class="mut">除了我，還有幾個人沒棄牌？</div><div class="chips" id="pOpp" style="margin:6px 0 4px"></div><div class="mut" id="pOppN" style="font-size:12px;margin-bottom:10px"></div>
+    <div class="mut">除了我，還有幾個人沒棄牌？</div><div class="chips" id="pOpp" style="margin:6px 0 4px"></div><div id="pOppSW"></div><div class="mut" id="pOppN" style="font-size:12px;margin-bottom:10px"></div>
     <div class="chips" id="pFacing"></div>
     <div id="pBetWrap" style="margin-top:8px"><label class="f">對手下注（BB）<input id="pBet" type="number" inputmode="decimal" step="0.5"></label></div>
   </div>
@@ -625,14 +625,14 @@ function renderPos(){$('positions').innerHTML=plist().map(p=>`<button class="chi
 $('positions').onclick=e=>{const b=e.target.closest('[data-p]');if(!b)return;S.pos=b.dataset.p;persist();renderPos();renderSitu();update()};
 const SITU=[['open','無人入池'],['limp','前面有人 limp'],['vsopen','前面有人加注'],['vs3b','我開池被 3bet'],['vs4b','我 3bet 被 4bet'],['vsshove','面對全下']];
 function renderSitu(){$('situ').innerHTML=SITU.map(([k,t])=>`<button class="chip ${S.situ===k?'on':''}" data-s="${k}">${t}</button>`).join('');renderExtra()}
-$('situ').onclick=e=>{const b=e.target.closest('[data-s]');if(!b)return;S.situ=b.dataset.s;persist();renderSitu();update()};
+$('situ').onclick=e=>{const b=e.target.closest('[data-s]');if(!b)return;S.situ=b.dataset.s;S.cold=0;persist();renderSitu();update()};
 function posOpts(list,sel){return list.map(p=>`<option value="${p}" ${p===sel?'selected':''}>${p}（${POSZH[p]}）</option>`).join('')}
 function renderExtra(){const ex=$('situExtra');const before=plist().slice(0,pidx(S.pos));const after=plist().slice(pidx(S.pos)+1);const others=plist().filter(p=>p!==S.pos);let h='';
  if(S.situ==='limp'){h=`<label class="f">Limp 人數<input id="xLimp" type="number" inputmode="numeric" min="1" value="${S.limpers}"></label>`}
  else if(S.situ==='vsopen'){if(!before.length){h='<div class="warn">你的位置前面沒有人，無法「前面有人加注」。</div>'}else{if(!before.includes(S.opener))S.opener=before[before.length-1];
   h=`<div class="grid2"><label class="f">誰加注<select id="xOpener">${posOpts(before,S.opener)}</select></label><label class="f">加注到（BB）<input id="xOpenSize" type="number" inputmode="decimal" step="0.5" value="${S.openSize}"></label></div>`;{const mx=Math.min(3,pidx(S.pos)-pidx(S.opener)-1);if(mx>0){const cv=Math.min(mx,+S.cold||0);h+=`<div class="mut" style="margin-top:8px">他加注後，輪到我之前有幾個人跟注？</div><div class="chips" id="xCold" style="margin-top:6px">${Array.from({length:mx+1},(_,j)=>`<button class="chip ${cv===j?'on':''}" data-cv="${j}">${j===0?'沒有':j+' 人'}</button>`).join('')}</div>`}}}}
  else if(S.situ==='vs3b'){if(!after.length){h='<div class="warn">你在大盲，不會是開池後被 3bet 的情況。</div>'}else{if(!after.includes(S.tb))S.tb=after[after.length-1];
-  h=`<div class="grid3"><label class="f">誰 3bet<select id="xTb">${posOpts(after,S.tb)}</select></label><label class="f">我開到（BB）<input id="xMyOpen" type="number" inputmode="decimal" step="0.5" value="${S.myOpen}"></label><label class="f">他 3bet 到（BB）<input id="xTbSize" type="number" inputmode="decimal" step="0.5" value="${S.tbSize}"></label></div>`}}
+  h=`<div class="grid3"><label class="f">誰 3bet<select id="xTb">${posOpts(after,S.tb)}</select></label><label class="f">我開到（BB）<input id="xMyOpen" type="number" inputmode="decimal" step="0.5" value="${S.myOpen}"></label><label class="f">他 3bet 到（BB）<input id="xTbSize" type="number" inputmode="decimal" step="0.5" value="${S.tbSize}"></label></div>`;{const mx=Math.min(2,S.n-2);if(mx>0){const cv=Math.min(mx,+S.cold||0);h+=`<div class="mut" style="margin-top:8px">他 3bet 之後，有幾個人跟注？</div><div class="chips" id="xCold" style="margin-top:6px">${Array.from({length:mx+1},(_,j)=>`<button class="chip ${cv===j?'on':''}" data-cv="${j}">${j===0?'沒有':j+' 人'}</button>`).join('')}</div>`}}}}
  else if(S.situ==='vs4b'){if(!before.length){h='<div class="warn">你的位置前面沒有人，無法 3bet。</div>'}else{if(!before.includes(S.opener))S.opener=before[before.length-1];
   h=`<div class="grid2"><label class="f">誰開池（後來 4bet）<select id="xOpener">${posOpts(before,S.opener)}</select></label><label class="f">他開池到（BB）<input id="xOpenSize" type="number" inputmode="decimal" step="0.5" value="${S.openSize}"></label><label class="f">我 3bet 到（BB）<input id="xMy3b" type="number" inputmode="decimal" step="0.5" value="${S.my3b}"></label><label class="f">他 4bet 到（BB）<input id="xFb" type="number" inputmode="decimal" step="0.5" value="${S.fbSize}"></label></div>`}}
  else if(S.situ==='vsshove'){if(!others.includes(S.shover))S.shover=before.length?before[before.length-1]:others[0];
@@ -671,6 +671,29 @@ function chips(bbx){return fmt(bbx*bbN(),0)}
 
 /* ---------- mixed-strategy preflop engine ---------- */
 // strategy per hand: {action:freq}, remainder = fold (or check)
+/* 翻前面對加注的目標頻率：以公開 solver 圖表校正（現金 6-max 100bb 2.5BB 開池；錦標賽含前注） */
+function vsoTarget(ht,ob,pos,tour,os,live,cc){let c,r;
+ if(ht==='BB'){if(ob<=1){c=39;r=17}else if(ob===2){c=32;r=13}else if(ob===3){c=26;r=10}else if(ob===4){c=23;r=8}else if(ob===5){c=21;r=6}else if(ob===6){c=19;r=5}else{c=17;r=4.5}
+  if(tour){if(ob<=1){c=62;r=17}else if(ob===2){c=73;r=13}else if(ob===3){c=68;r=9.3}else if(ob===4){c=63;r=7.5}else{c=57.5;r=5.2}}}
+ else if(ht==='SB'){if(ob===2){c=5;r=13}else if(ob===3){c=2.5;r=11.5}else if(ob===4){c=2;r=11}else if(ob===5){c=1.5;r=9.5}else if(ob===6){c=1;r=8.5}else{c=1;r=7.5}if(tour){c=c*2.5+3;r*=1.25}}
+ else{if(pos==='BTN'){if(ob<=3){c=9;r=10}else if(ob===4){c=8;r=8}else if(ob===5){c=7;r=7}else if(ob===6){c=6.5;r=6}else{c=6;r=5}}
+  else{if(ob<=4){c=5;r=8}else if(ob===5){c=4.3;r=6.7}else if(ob===6){c=4;r=5.5}else{c=3.5;r=5}}
+  if(tour){c*=2.1;r*=1.4}}
+ const ref=tour?2.15:(ob<=1?3:2.5),ratio=os/ref;let kc=ht==='BB'?(ob>=5?2.1:ob>=3?(ratio<1?2:1.3):(ratio<1?1.3:1.0)):1.0,kr=.6;if(live){kc*=.7;kr*=.7}
+ if(ratio>1.02||ratio<.98){c*=Math.pow(ratio,-kc);if(ratio>1)r*=Math.pow(ratio,-kr)}c=Math.min(c,85);
+ let onlyAdd=false;if(cc>0){if(ht==='BB'){c*=Math.pow(.8,cc);r*=1.25}else{c*=1.2;r*=1.1;onlyAdd=true}}
+ return{c,r,onlyAdd}}
+function vsoCalib(A,g,T,ht,capF){const cb=h=>h.length===2?6:h[2]==='s'?4:12;const ms=ks=>{let m=0;for(const h in g)ks.forEach(k=>m+=cb(h)*(g[h][k]||0));return m/13.26};const sum=o=>Object.values(o).reduce((a,b)=>a+b,0);
+ let r=ms(['v3','b3']);
+ if(r<T.r-.3){const sc=byRank(new Set(Object.keys(g).filter(h=>(g[h].call||0)>0&&!(g[h].v3>0)&&(!capF||capF(h)>=1)&&rankIdx(h)<=15&&(h.length!==2||rankIdx(h)<=4)))).slice(0,16);const blk=['A5s','A4s','KTs','A3s','QTs','A2s','JTs','K9s','T9s','A9s','98s','A8s','87s','A7s','76s','A6s','K8s','Q9s','K7s','J9s','K6s','65s','K5s','54s','KQo','AJo','ATo','KJo'];const order=[];
+  for(let i=0;i<Math.max(sc.length,blk.length);i++){if(sc[i])order.push([sc[i],'v3']);if(blk[i]&&!sc.includes(blk[i]))order.push([blk[i],'b3'])}if(capF)for(let i=order.length-1;i>=0;i--)if(capF(order[i][0])<1)order.splice(i,1);
+  for(let pass=0;pass<2&&r<T.r;pass++)for(const [h,k] of order){if(r>=T.r)break;const o=g[h];if(!o)continue;const cur=(o.v3||0)+(o.b3||0);let d=Math.min(.5,1-cur,(T.r-r)*13.26/cb(h));if(d<=.01)continue;o[k]=(o[k]||0)+d;const ov=sum(o)-1;if(ov>0){o.call=Math.max(0,(o.call||0)-ov);if(o.call<.005)delete o.call}r+=d*cb(h)/13.26}}
+ else if(r>T.r+.8){const mv=ms(['v3']),mb=ms(['b3']);const fb=mb>0?Math.max(0,Math.min(1,(T.r-mv)/mb)):1;if(fb<1)for(const h in g)if(g[h].b3){g[h].b3*=fb;if(g[h].b3<.005)delete g[h].b3}}
+ if(T.c==null)return;let c=ms(['call']);
+ const sc2=h=>rankIdx(h)-(h.length===2?18:h[2]==='s'?(ht==='BB'?34:40)+(Math.abs(ri(h[0])-ri(h[1]))<=2&&h[0]!=='A'?22:0):0);
+ if(c>T.c+.5&&!T.onlyAdd){const hs=Object.keys(g).filter(h=>(g[h].call||0)>0).sort((a,b)=>sc2(b)-sc2(a));for(const h of hs){if(c<=T.c)break;const o=g[h];const m=cb(h)*o.call/13.26;const cut=Math.min(m,c-T.c);o.call-=cut*13.26/cb(h);if(o.call<.005)delete o.call;c-=cut}}
+ else if(c<T.c-.5){const ok=h=>ht==='BB'||h.length===2||h[2]==='s'||(ri(h[0])<=ri('T')&&ri(h[1])<=ri('T'));const pool=ORDER.slice().sort((a,b)=>sc2(a)-sc2(b));
+  for(const h of pool){if(c>=T.c)break;if(!ok(h)||(A._noCall&&A._noCall.has(h)))continue;const o=g[h];const room=Math.min(1-sum(o),(capF?capF(h):1)-(o.call||0));if(room<=.01)continue;const d=Math.min(room,(T.c-c)*13.26/cb(h));o.call=(o.call||0)+d;c+=d*cb(h)/13.26}}}
 function byRank(set){return [...set].sort((a,b)=>rankIdx(a)-rankIdx(b))}
 function ramp(set,hi,lo,fn){const arr=byRank(set);arr.forEach((h,i)=>{const t=arr.length>1?i/(arr.length-1):0;fn(h,hi+(lo-hi)*t)})}
 function blank(){const g={};ORDER.forEach(h=>g[h]={});return g}
@@ -786,9 +809,10 @@ function baseAdvice0(h){
    const va=byRank(v);va.forEach((x,i)=>{const bottom=i>=va.length*.65;if(bottom&&canCall){addF(g,x,'v3',.6);addF(g,x,'call',.4)}else addF(g,x,'v3',1)});
    b.forEach(x=>{if(ht==='BB'){addF(g,x,'b3',.5);addF(g,x,'call',.5)}else if(canCall){addF(g,x,'b3',.55);addF(g,x,'call',.15)}else addF(g,x,'b3',.65)});
    const ca=byRank(c);ca.forEach((x,i)=>{const t=i/Math.max(1,ca.length-1);if(x[2]==='s'&&t<.5&&!x.startsWith('AA')){addF(g,x,'b3',.12)}addF(g,x,'call',(t<.75?1:1-(t-.75)*2.2)*capF(x)*mwOff(x))});
-   if(A._mwAdd&&A._mwAdd.size){const q=(ht==='SB'?.4:ht==='BB'?.9:pos==='BTN'?.7:.4)*Math.max(.4,tight);A._mwAdd.forEach(x=>addF(g,x,'call',q))}
+   if(A._mwAdd&&A._mwAdd.size){const q=(ht==='SB'?.4:ht==='BB'?.9:pos==='BTN'?.7:.4)*Math.max(.4,tight);A._mwAdd.forEach(x=>addF(g,x,'call',c.has(x)||(x.length===2&&ht!=='SB')?1:q))}
    if(canCall&&tight>=.6&&!(grp==='early'&&ht==='IP')){const fr=minus(topPct(Math.min(100,pctOf(union(v,b,c))+6*tight)),union(v,b,c));ramp(A._noCall?minus(fr,A._noCall):fr,.3*tight*tight,.08*tight,(x,f)=>addF(g,x,'call',f*capF(x)*mwOff(x)))}
    if(!canCall&&tight>=.6){const fr=minus(topPct(Math.min(100,pctOf(union(v,b))+4*tight)),union(v,b));ramp(fr,.3*tight,.08*tight,(x,f)=>addF(g,x,'b3',f))}
+   try{vsoCalib(A,g,vsoTarget(ht,ob,pos,tour,os,live,cc),ht,capF)}catch(e){}
    A.map={v3:[`3bet 到 ${tsz}BB（價值）`,'raise',tsz],b3:[`3bet 到 ${tsz}BB（詐唬）`,'bluff',tsz],call:[`跟注 ${os}BB`,'call']}}
   const gz={early:'前位',mid:'中位',btn:'按鈕',sb:'小盲'}[grp];
   A.reasons.unshift(`${op}（${gz}）開池 ${os}BB，你在 ${pos}${ip?'（有位置）':'（沒位置）'}。`);
@@ -818,6 +842,9 @@ function baseAdvice0(h){
    b.forEach(x=>addF(g,x,'b3',.5));
    const ca=byRank(c);ca.forEach((x,i)=>{const t=i/Math.max(1,ca.length-1);if(x==='JJ'||x==='AQs'){addF(g,x,'v3',.2)}addF(g,x,'call',t<.7?1:1-(t-.7)*1.6)});
    A.map={v3:[`4bet 到 ${fsz}BB（價值）`,'raise',fsz],b3:[`4bet 到 ${fsz}BB（詐唬）`,'bluff',fsz],call:[`跟注到 ${ts}BB`,'call']}}
+  {const c3=Math.max(0,Math.min(2,Math.round(+S.cold||0)));A.cold=c3;if(c3>0){const k=Math.pow(.3,c3);b.forEach(x=>{const o=g[x];if(!o)return;['b3','shove','v3'].forEach(q=>{if(o[q]&&!v.has(x)){o[q]*=k;if(o[q]<.01)delete o[q]}})});for(const x in g){if(x.length===3&&x[2]==='o'&&!v.has(x)&&g[x].call){g[x].call*=k;if(g[x].call<.01)delete g[x].call}}
+   if(A.map.v3){const f2=Math.round((ts*(ip?2.2:2.5)+ts*c3*.8)*2)/2;if(f2<eff*.6){A.map.v3=[`4bet 到 ${f2}BB（價值）`,'raise',f2];if(A.map.b3)A.map.b3=[`4bet 到 ${f2}BB（詐唬）`,'bluff',f2]}}
+   A.approx=true;A.reasons.push(`${tb} 3bet 後又有 ${c3} 個人跟注：你要同時面對兩個強範圍，詐唬 4bet 幾乎不做；不同花的大牌（AQo、KQo）容易被壓制，多半棄牌；對子和同花好牌因為底池賠率變好可以跟。真的要 4bet 尺寸也要加大。`)}}
   A.reasons.unshift(`你在 ${pos} 開池，${tb} 3bet 到 ${ts}BB，翻後你${ip?'有位置':'沒位置'}。`);
   if(!ip)A.reasons.push('沒位置時跟注範圍要更緊，偏好主動 4bet 或棄牌。');
   return A}
@@ -1118,7 +1145,7 @@ async function runAI(out,prompt){const sample=await getSample();if(!sample){out.
  try{const r=await sample(prompt,{onText:({text})=>{out.textContent=text},cache:false});out.textContent=r.text}catch(e){out.textContent=e.code==='not_granted'?'未授權使用 Claude。':e.code==='rate_limited'?'太頻繁了，稍等一下再試。':'發生錯誤：'+(e.message||e.code)}}
 function askAI(){const c=lastCtx;if(!c)return;const pRaw=getVillainP();
  runAI($('aiOut'),`你是德州撲克教練，精通 GTO（含混合頻率）與剝削打法。請用繁體中文、精簡條列回答（手機閱讀，300字內）。\n\n【牌桌】${S.n}人桌，盲注 ${S.sb}/${S.bb}${+S.ante?`，前注 ${S.ante}`:''}，我的籌碼 ${S.stack}（${fmt(myBB())}BB），有效 ${fmt(effBB())}BB\n【我】位置 ${S.pos}，手牌 ${S.cards.filter(Boolean).map(x=>x.r+x.s).join(' ')}（${c.h}）\n【狀況】${ctxSitu()}\n【App 的 GTO 基準頻率】${c.lab}\n${c.adjLab?`【App 依對手調整後】${c.adjLab}\n`:''}【主要對手資料】\n${playerText(pRaw)}\n\n請給：1) 翻前最佳動作、頻率與尺寸（同意或不同意 App 都直說）；2) 依這位對手的特色，翻後計畫；3) 一個要特別小心的點。`)}
-function ctxSitu(){if(S.situ==='vs4b')return `${S.opener} 開池 ${S.openSize}BB，我 3bet 到 ${S.my3b}BB，他 4bet 到 ${S.fbSize}BB，回到我`;if(S.situ==='open')return '前面所有人棄牌到我';if(S.situ==='limp')return `前面有 ${S.limpers} 人 limp`;if(S.situ==='vsopen')return +S.cold>0?`${S.opener} 加注到 ${S.openSize}BB，中間 ${S.cold} 人跟注後輪到我`:`${S.opener} 加注到 ${S.openSize}BB，其他人棄牌到我`;if(S.situ==='vs3b')return `我開池到 ${S.myOpen}BB，${S.tb} 3bet 到 ${S.tbSize}BB，回到我`;if(S.situ==='vsshove')return `${S.shover} 全下（有效 ${fmt(effBB())}BB）`;return ''}
+function ctxSitu(){if(S.situ==='vs4b')return `${S.opener} 開池 ${S.openSize}BB，我 3bet 到 ${S.my3b}BB，他 4bet 到 ${S.fbSize}BB，回到我`;if(S.situ==='open')return '前面所有人棄牌到我';if(S.situ==='limp')return `前面有 ${S.limpers} 人 limp`;if(S.situ==='vsopen')return +S.cold>0?`${S.opener} 加注到 ${S.openSize}BB，中間 ${S.cold} 人跟注後輪到我`:`${S.opener} 加注到 ${S.openSize}BB，其他人棄牌到我`;if(S.situ==='vs3b')return `我開池到 ${S.myOpen}BB，${S.tb} 3bet 到 ${S.tbSize}BB${+S.cold>0?'，又有 '+S.cold+' 人跟注':''}，回到我`;if(S.situ==='vsshove')return `${S.shover} 全下（有效 ${fmt(effBB())}BB）`;return ''}
 
 /* ================= POSTFLOP ================= */
 const SUITIDX={s:0,h:1,d:2,c:3};
@@ -1152,12 +1179,15 @@ function rangeCombos(wmap,dead){const D=new Set(dead);const L=[];for(const h in 
 function pickW(L,tw){let x=Math.random()*tw;for(let i=0;i<L.length;i++){x-=L[i].w;if(x<=0)return L[i]}return L[L.length-1]}
 const MWCALL="JJ-22,AQs-A2s,KQs-K8s,QJs-Q9s,JTs-J8s,T9s-T8s,98s,97s,87s,76s,65s,54s,AQo-ATo,KQo-KTo,QJo,JTo";
 function equityN(hero,board,lists,trials){lists=lists.filter(L=>L&&L.length);if(!lists.length)return .5;if(lists.length===1)return equity(hero,board,lists[0],trials);
- const tws=lists.map(L=>L.reduce((a,b)=>a+b.w,0));const known=new Set([...hero,...board]);const deck=[];for(let c=0;c<52;c++)if(!known.has(c))deck.push(c);let win=0,n=0;
- for(let t=0;t<trials;t++){const used=new Set(known);const vs=[];let ok=true;
+ const tws=lists.map(L=>L.reduce((a,b)=>a+b.w,0));const known=new Set([...hero,...board]);const deck=[];for(let c=0;c<52;c++)if(!known.has(c))deck.push(c);let win=0,n=0;const need=5-board.length;
+ const T=need===0?trials*6:need===1?trials*4:trials*5;
+ const score=(bd,vs)=>{const a=ev([...hero,...bd]);let best=-1,tie=1;for(const v of vs){const b=ev([...v,...bd]);if(b>best)best=b;if(b===a)tie++}return a>best?1:a===best?1/tie:0};
+ for(let t=0;t<T;t++){const used=new Set(known);const vs=[];let ok=true;
   for(let i=0;i<lists.length;i++){let v=null;for(let k=0;k<8;k++){const pk=pickW(lists[i],tws[i]);if(!pk)continue;const c=pk.c;if(!used.has(c[0])&&!used.has(c[1])){v=c;break}}if(!v){ok=false;break}used.add(v[0]);used.add(v[1]);vs.push(v)}
-  if(!ok)continue;const bd=board.slice();while(bd.length<5){const c=deck[(Math.random()*deck.length)|0];if(used.has(c))continue;used.add(c);bd.push(c)}
-  const a=ev([...hero,...bd]);let best=-1,tie=1;for(const v of vs){const b=ev([...v,...bd]);if(b>best)best=b;if(b===a)tie++}
-  if(a>best)win+=1;else if(a===best)win+=1/tie;n++}
+  if(!ok)continue;
+  if(need===0){win+=score(board,vs);n++}
+  else if(need===1){const o=(Math.random()*deck.length)|0;let k=0;for(let q=0;q<deck.length&&k<6;q++){const c=deck[(o+q*7)%deck.length];if(used.has(c))continue;win+=score([...board,c],vs);n++;k++}}
+  else{const bd=board.slice();while(bd.length<5){const c=deck[(Math.random()*deck.length)|0];if(used.has(c))continue;used.add(c);bd.push(c)}win+=score(bd,vs);n++}}
  return n?win/n:.5}
 function equity(hero,board,L,trials){if(!L.length)return .5;const tw=L.reduce((a,b)=>a+b.w,0);const known=new Set([...hero,...board]);const need=5-board.length;let win=0,n=0;
  const deck=[];for(let c=0;c<52;c++)if(!known.has(c))deck.push(c);
@@ -1227,7 +1257,7 @@ function lineRanges(line){const pos=S.pos;const L=plist();let vpos,hero,vil,ip,a
  return{hero,vil,vpos,ip,aggr,pot:Math.max(1,pot),stack:Math.max(0,effBB()-inv),note}}
 
 /* ----- state ----- */
-const PS={line:'',ip:true,aggr:true,pot:5.5,stack:97.5,facing:'none',bet:3,range:'auto',opp:1,board:[null,null,null,null,null],active:0,pick:null};
+const PS={line:'',ip:true,aggr:true,pot:5.5,stack:97.5,facing:'none',bet:3,range:'auto',opp:1,oppSeats:null,vilSeat:null,noLib:false,board:[null,null,null,null,null],active:0,pick:null};
 function defaultLine(){return S.situ==='vsopen'?'srp_call':S.situ==='vs3b'?'p3_call':S.situ==='vs4b'?'p4_call':S.situ==='limp'?(S.pos==='BB'?'lp':'iso'):'srp_pfr'}
 function loadFromPre(){if(!PS.line)PS.line=defaultLine();const r=lineRanges(PS.line);PS.ip=r.ip;PS.aggr=r.aggr;PS.pot=Math.round(r.pot*10)/10;PS.stack=Math.round(r.stack*10)/10;renderPostForm();schedulePost()}
 
@@ -1236,7 +1266,7 @@ function renderPostForm(){
  $('pIP').innerHTML=[[true,'我有位置 (IP)'],[false,'我沒位置 (OOP)']].map(([v,t])=>`<button class="chip ${PS.ip===v?'on':''}" data-v="${v}">${t}</button>`).join('');
  $('pAggr').innerHTML=[[true,'翻前加注者是我'],[false,'翻前加注者是對手']].map(([v,t])=>`<button class="chip ${PS.aggr===v?'on':''}" data-v="${v}">${t}</button>`).join('');
  $('pPot').value=PS.pot;$('pStack').value=PS.stack;
- $('pOpp').innerHTML=[1,2,3,4,5].map(v=>`<button class="chip ${(+PS.opp||1)===v?'on':''}" data-v="${v}">${v===1?'1 人（單挑）':v+' 人'}</button>`).join('');$('pOppN').textContent=(+PS.opp||1)>1?'多人底池：底池金額請填實際的（含所有人投入的）。多人底池沒有 solver 資料，建議都是估算。':'';
+ $('pOpp').innerHTML=[1,2,3,4,5].map(v=>`<button class="chip ${(+PS.opp||1)===v?'on':''}" data-v="${v}">${v===1?'1 人（單挑）':v+' 人'}</button>`).join('');{const w=$('pOppSW');const n=(+PS.opp||1);let hh='';if(n>1){let vp=null;try{vp=lineRanges(PS.line||defaultLine()).vpos}catch(e){}const seats=plist().filter(p=>p!==S.pos&&p!==vp);PS.oppSeats=(PS.oppSeats||[]).filter(p=>seats.includes(p)).slice(0,n-1);hh=`<div class="mut" style="margin-top:6px">其他 ${n-1} 位對手坐在哪？（選填，選了會依位置推他的範圍）</div><div class="chips" id="pOppS" style="margin:6px 0 4px">${seats.map(p=>`<button class="chip ${PS.oppSeats.includes(p)?'on':''}" data-v="${p}">${p}</button>`).join('')}</div>`}else PS.oppSeats=null;setH(w,hh);const el=$('pOppS');if(el)el.onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;const v=b.dataset.v;const a=PS.oppSeats||[];const i=a.indexOf(v);if(i>=0)a.splice(i,1);else{if(a.length>=n-1)a.shift();a.push(v)}PS.oppSeats=a;renderPostForm();schedulePost()}}$('pOppN').textContent=(+PS.opp||1)>1?'多人底池：底池金額請填實際的（含所有人投入的）。多人底池沒有 solver 資料，建議都是估算。':'';
  $('pFacing').innerHTML=[['none','輪到我下注（我先手或對手過牌）'],['bet','對手下注了']].map(([v,t])=>`<button class="chip ${PS.facing===v?'on':''}" data-v="${v}">${t}</button>`).join('');
  $('pBetWrap').style.display=PS.facing==='bet'?'block':'none';$('pBet').value=PS.bet;
  $('pRange').value=PS.range;renderBoard()}
@@ -1320,7 +1350,7 @@ function bucketOf2(hero,board){const b=bucketOf(hero,board);if(board.length!==3)
 function libBetL(VL,board){try{if(board.length!==3||PS.vsRaise||PS.facing!=='bet')return null;const sp=libSpot();if(!sp||!LIB[sp.spot]||sp.oop===PS.ip)return null;const meta=LIBSPOT[sp.spot];const spr=PS.stack/Math.max(.1,PS.pot),lspr=meta.stack/meta.pot;if(spr<lspr*.45||spr>lspr*2.2)return null;
  const fl=nearFlops(sp.spot,board)[0];const N=fl&&LIB[sp.spot][fl][sp.oop?'ip_vs_check':'root'];if(!N||!N.t||N.t.some(x=>x==null))return null;const bs=N.a.map((a,i)=>a[0]==='B'?i:-1).filter(i=>i>=0);if(!bs.length)return null;const bi=sp.oop&&PS.bet/Math.max(.1,PS.pot)>=.55?bs[Math.min(1,bs.length-1)]:bs[0];
  const tw0=VL.reduce((a,b)=>a+b.w,0);const out=[];VL.forEach(x=>{const row=N.b[bucketOf2(x.c,board)];const f=row?(row[1+bi]||0):(N.t[bi]||0);if(f>0)out.push({c:x.c,w:x.w*f/100,eq:x.eq})});const tw=out.reduce((a,b)=>a+b.w,0);return out.length>=8&&tw>tw0*.03?out:null}catch(e){return null}}
-function libFor(X){if(+PS.opp>1)return null;if(X.street!=='flop'||PS.vsRaise)return null;const sp=libSpot();if(!sp||!LIB[sp.spot])return null;if(sp.oop===PS.ip)return null;
+function libFor(X){if(+PS.opp>1||PS.noLib)return null;if(X.street!=='flop'||PS.vsRaise)return null;const sp=libSpot();if(!sp||!LIB[sp.spot])return null;if(sp.oop===PS.ip)return null;
  const meta=LIBSPOT[sp.spot];const spr=PS.stack/Math.max(.1,PS.pot),lspr=meta.stack/meta.pot;if(spr<lspr*.45||spr>lspr*2.2)return null;
  const hero=S.cards.map(cInt),board=PS.board.filter(Boolean).map(cInt);const bk=bucketOf(hero,board),bk2=bucketOf2(hero,board);
  let node;if(PS.facing!=='bet')node=sp.oop?'root':'ip_vs_check';else{if(sp.oop){const r=PS.bet/Math.max(.1,PS.pot);node=r<.55?'oop_vs_bet1':'oop_vs_bet2'}else node='ip_vs_donk1'}
@@ -1369,11 +1399,13 @@ function calcHTML(c,o){if(!c)return'';if(!isPro())return lockBtn('EV 損失和�
   B.push(`<div class="hb"><b>結論</b><div class="fm">你的勝率約 ${c.tot}% ${diff>=3?'＞':diff<=-3?'＜':'≈'} 需要的 ${n.need}%</div><div class="mut">${msg}</div></div>`)}
  B.push(`<div class="hb"><b>GTO 頻率是怎麼來的？</b><div class="mut">${o.src==='solver'?'這組頻率來自 solver：電腦讓雙方的策略互相調整幾百輪，直到誰都沒辦法再多賺。它沒有手算公式，精度約在幾個百分點內。':'這個位置沒有 solver 資料，頻率是 app 用上面的賠率、MDF 和勝率估算的，方向可靠，但比例只是近似值。'}兩個動作的比例都不低時，代表它們的 EV 很接近，選哪個都不算大錯。</div></div>`);
  return `<details class="how"><summary>🔎 這些數字怎麼算的？</summary>${B.join('')}</details>`}
+function seatCallRange(p){try{const line=PS.line||defaultLine();if(!/^srp/.test(line))return null;const heroOpen=line==='srp_pfr';const opener=heroOpen?S.pos:(S.opener||null);if(!opener||p===opener||p===S.pos)return null;if(pidx(p)<0||pidx(p)<=pidx(opener))return null;const os=heroOpen?(S.pos==='SB'?OPSB():OPN()):(+S.openSize||OPN());const A2=withSitu({situ:'vsopen',pos:p,opener,openSize:os,cold:0},()=>baseAdvice('AA'));const w=wFrom(A2,['call']);return Object.keys(w).length>3?w:null}catch(e){return null}}
 function runPost(){window.LASTRNG=null;const box=$('postOut');const hc=S.cards;const bd=PS.board.filter(Boolean);
  if(!hc[0]||!hc[1]){box.innerHTML='<div class="res mut">先在上面「我的手牌」選好兩張牌。</div>';return}
  if(bd.length<3){box.innerHTML='<div class="res mut">輸入翻牌 3 張後開始分析。轉牌、河牌出來再補上就會重新計算。</div>';return}
  const hero=hc.map(cInt),board=bd.map(cInt);const street=board.length===3?'flop':board.length===4?'turn':'river';
  const R0=lineRanges(PS.line||defaultLine());let vilW=Object.assign({},R0.vil);const heroW=R0.hero;
+ if(PS.vilSeat){const w0=seatCallRange(PS.vilSeat);if(w0)vilW=Object.assign({},w0)}
  const P=prof(getVillainP());
  const scaleRange=(w,mode)=>{if(mode==='auto')return w;const arr=Object.keys(w).sort((a,b)=>rankIdx(a)-rankIdx(b));const out={};
   if(mode==='tight'){arr.slice(0,Math.ceil(arr.length*.65)).forEach(h=>out[h]=w[h]);return out}
@@ -1390,8 +1422,9 @@ function runPost(){window.LASTRNG=null;const box=$('postOut');const hc=S.cards;c
  const Req=HS.reduce((a,b)=>a+b.eq*b.w,0)/Math.max(1e-9,HS.reduce((a,b)=>a+b.w,0));
  const nOpp=Math.max(1,Math.min(5,Math.round(+PS.opp||1)));const MW=nOpp>1,mk=nOpp-1;let XL=[];
  if(MW){const xw={};expand(MWCALL).forEach(h=>xw[h]=1);const soft={air:.12,bdoor:.2,overs:.3,gut:.5,low:.7};
-  XL=rangeCombos(xw,dead).map(x=>{if(street==='flop')return x;let w=1;try{const b=bucketOf(x.c,board);if(soft[b]!=null)w=soft[b]}catch(e){}return Object.assign({},x,{w:x.w*w})})}
- const others=MW?Array(mk).fill(XL):[];
+  const softL=L=>L.map(x=>{if(street==='flop')return x;let w=1;try{const b=bucketOf(x.c,board);if(soft[b]!=null)w=soft[b]}catch(e){}return Object.assign({},x,{w:x.w*w})});XL=softL(rangeCombos(xw,dead));
+  var oSeat=(PS.oppSeats||[]).slice(0,mk).map(p=>{const w=seatCallRange(p);if(!w)return null;const L=softL(rangeCombos(w,dead));return L.length?L:null})}
+ const others=MW?Array.from({length:mk},(_,i)=>(oSeat&&oSeat[i])||XL):[];const nSeatR=MW?(oSeat||[]).filter(Boolean).length:0;
  const heroEq1=equity(hero,board,VL,3000);const heroEq=MW?equityN(hero,board,[VL,...others],2500):heroEq1;
  const pct=HS.filter(x=>x.eq>heroEq1).reduce((a,b)=>a+b.w,0)/Math.max(1e-9,HS.reduce((a,b)=>a+b.w,0));
  const strong=(L)=>{let s=0,t=0;L.forEach(x=>{const v=ev([...x.c,...board]);const c=catOf(v);const bc=catOf(ev(board));t+=x.w;if(c>=2&&c>bc||c>=4)s+=x.w});return t?s/t:0};
@@ -1408,7 +1441,7 @@ function runPost(){window.LASTRNG=null;const box=$('postOut');const hc=S.cards;c
   else{size=T.wet>=1.3?'big':'small';F=clamp(.3+adv*2,.1,.5)}
   if(!PS.aggr&&!PS.ip){F*=.35;notes.push('你不是翻前加注者且沒位置：GTO 大多過牌給加注者，少量領先下注 (donk)。')}
   else if(!PS.aggr&&PS.ip){F=Math.max(F,.45);notes.push('對手（翻前加注者）過牌給你：他放棄了主動權，你可以較常下注搶池。')}
-  if(MW){F*=Math.pow(.62,mk);notes.push(`多人底池（還有 ${nOpp} 位對手）：至少一個人中牌的機會高很多，詐唬很難同時騙過所有人。所以整體少下注，只用夠強的牌和強聽牌下注。`)}
+  if(MW){F*=Math.pow(.62,mk);notes.push(`多人底池（還有 ${nOpp} 位對手${nSeatR?'，其中 '+nSeatR+' 位依位置推範圍':''}）：至少一個人中牌的機會高很多，詐唬很難同時騙過所有人。所以整體少下注，只用夠強的牌和強聽牌下注。`)}
   const mwV=MW?Math.pow(.85,mk):1,mwB=MW?Math.pow(.4,mk):1;
   const run=(F,size,vMul,bMul)=>{vMul*=mwV;bMul*=mwB;const vcut=F*(size==='small'?.78:.62)*vMul;const bShare=Math.max(0,F-F*(size==='small'?.78:.62))*bMul;
    let valueF=sig((vcut-pct)/.045);if(pct<.05&&T.wet<.9&&street!=='river')valueF*=.75;
@@ -1502,7 +1535,7 @@ function prQuestion(){tierNormalize();if(!NOV&&!FH.gen&&limLeft('pre')<=0){PR.q=
  const pk=arr=>{const c=fx&&fx.pos?arr.filter(p=>fx.pos.includes(p)):[];return rnd(c.length?c:arr)};
  if(type==='open'){pos=pk(L.slice(0,-1))}
  else if(type==='limp'){pos=rnd(L.slice(1));const before=L.slice(0,L.indexOf(pos)).filter(p=>p!=='SB'||pos==='BB');over.limpers=1+((Math.random()<.35&&before.length>1)?1:0);over.limpSeats=[];const cands=before.slice();for(let i=0;i<over.limpers;i++){const s=cands.splice((Math.random()*cands.length)|0,1)[0];if(s)over.limpSeats.push(s)}over.limpers=over.limpSeats.length||1}
- else if(type==='vsopen'){pos=pk(L.slice(1));const before=L.slice(0,L.indexOf(pos));over.opener=rnd(before);over.openSize=over.opener==='SB'?OPSB():OPN()}
+ else if(type==='vsopen'){pos=pk(L.slice(1));const before=L.slice(0,L.indexOf(pos));over.opener=rnd(before);over.openSize=over.opener==='SB'?OPSB():OPN();{const gap=L.indexOf(pos)-L.indexOf(over.opener)-1;if(gap>0&&(typeof FH!=='undefined'&&FH.gen?(+FHS.mw&&Math.random()<.8):Math.random()<.25))over.cold=Math.min(gap,Math.random()<.7?1:2)}}
  else if(type==='vs3b'){pos=rnd(L.slice(0,-1));const after=L.slice(L.indexOf(pos)+1);over.tb=rnd(after);over.myOpen=pos==='SB'?OPSB():OPN();
   const ip3=postIdx(over.tb)>postIdx(pos);over.tbSize=ip3?over.myOpen*3:Math.round(over.myOpen*4);if(n===2)over.tbSize=over.myOpen*3.5}
  else if(type==='vs4b'){pos=rnd(L.slice(1));const before=L.slice(0,L.indexOf(pos));over.opener=rnd(before);over.openSize=over.opener==='SB'?OPSB():OPN();const ip0=postIdx(pos)>postIdx(over.opener);over.my3b=Math.round(over.openSize*(ip0?3:4)*2)/2;over.fbSize=Math.round(over.my3b*(ip0?2.3:2.1)*2)/2}
@@ -1541,12 +1574,13 @@ function prQuestion(){tierNormalize();if(!NOV&&!FH.gen&&limLeft('pre')<=0){PR.q=
  vpos=over.situ==='open'?(pos==='SB'?'BB':'BB'):over.situ==='limp'?(over.limpSeats||[])[0]:over.situ==='vs3b'?over.tb:over.situ==='vsshove'?over.shover:over.opener;
  PR.q={over,A,h,cards:[c1,c2],bbs,type,vbb:vbb||bbs,effbb:Math.min(bbs,vbb||bbs),P,E,vpos};PR.answered=false;PR.view='q';renderPractice()}
 
+function coldSeats(o){if(!(o.situ==='vsopen'&&o.cold>0))return[];const L=POS[o.n],hi=L.indexOf(o.pos);return L.slice(Math.max(L.indexOf(o.opener)+1,hi-o.cold),hi)}
 function seatActions(q){const o=q.over,L=POS[o.n],act={};const hi=L.indexOf(o.pos);
  L.forEach(p=>act[p]={st:'wait'});
  const foldBefore=(upto,except=[])=>{for(let i=0;i<upto;i++){const p=L[i];if(!except.includes(p)&&p!==o.pos)act[p]={st:'fold'}}};
  if(o.situ==='open')foldBefore(hi);
  else if(o.situ==='limp'){foldBefore(hi,o.limpSeats||[]);(o.limpSeats||[]).forEach(p=>act[p]={st:'bet',txt:'Limp 1BB',amt:1})}
- else if(o.situ==='vsopen'){foldBefore(hi,[o.opener]);act[o.opener]={st:'bet',txt:`加注 ${o.openSize}BB`,amt:o.openSize}}
+ else if(o.situ==='vsopen'){const cs=coldSeats(o);foldBefore(hi,[o.opener,...cs]);act[o.opener]={st:'bet',txt:`加注 ${o.openSize}BB`,amt:o.openSize};cs.forEach(p=>act[p]={st:'bet',txt:`跟注 ${o.openSize}BB`,amt:o.openSize})}
  else if(o.situ==='vs3b'){foldBefore(L.length,[o.tb]);act[o.pos]={st:'me',txt:`加注 ${o.myOpen}BB`,amt:o.myOpen};act[o.tb]={st:'bet',txt:`3bet ${o.tbSize}BB`,amt:o.tbSize}}
  else if(o.situ==='vs4b'){foldBefore(L.length,[o.opener]);act[o.opener]={st:'bet',txt:`4bet ${o.fbSize}BB`,amt:o.fbSize};act[o.pos]={st:'me',txt:`3bet ${o.my3b}BB`,amt:o.my3b}}
  else{foldBefore(hi,[o.shover]);act[o.shover]={st:'bet',txt:`全下 ${q.effbb||q.bbs}BB`,amt:q.effbb||q.bbs,allin:true}}
@@ -1566,7 +1600,7 @@ function tableHTML(q){const o=q.over,L=POS[o.n];const hi=L.indexOf(o.pos);const 
   seats+=`<div class="seat ${a.st==='fold'?'folded':''} ${me?'hero':''}" style="left:${x}%;top:${y}%"><div class="pn">${me?'我':''} ${p}</div><div class="ps">${a.allin?'All-in':(me?q.bbs:(q.vbb||q.bbs))+'BB'}</div>${q.P&&p===q.vpos?`<div class="vtag">${esc(STYLE[q.P.st]||'')}</div>`:''}${p==='BTN'||(o.n===2&&p==='BTN')?'<div class="dealer">D</div>':''}${bubble}${myb}</div>`});
  return `<div class="felt"><div class="pot">底池 ${fmt(pot)}BB</div>${seats}<div class="hcards">${q.cards.map(c=>`<div class="pc s-${c.s}">${c.r==='T'?'10':c.r}<span>${SUITS.find(s=>s[0]===c.s)[1]}</span></div>`).join('')}</div></div>`}
 
-function qText(q){const o=q.over;if(o.situ==='vs4b')return `${o.opener} 開池 ${o.openSize}BB，你在 ${o.pos} 3bet 到 ${o.my3b}BB，他 4bet 到 ${o.fbSize}BB，回到你。`;if(o.situ==='open')return `前面全部棄牌，輪到你（${o.pos}）。`;if(o.situ==='limp')return `${(o.limpSeats||[]).join('、')} limp，輪到你（${o.pos}）。`;if(o.situ==='vsopen')return `${o.opener} 加注到 ${o.openSize}BB，輪到你（${o.pos}）。`;if(o.situ==='vs3b')return `你在 ${o.pos} 開池 ${o.myOpen}BB，${o.tb} 3bet 到 ${o.tbSize}BB，回到你。`;return `${o.shover} 全下 ${q.effbb||q.bbs}BB，輪到你（${o.pos}）。`}
+function qText(q){const o=q.over;if(o.situ==='vs4b')return `${o.opener} 開池 ${o.openSize}BB，你在 ${o.pos} 3bet 到 ${o.my3b}BB，他 4bet 到 ${o.fbSize}BB，回到你。`;if(o.situ==='open')return `前面全部棄牌，輪到你（${o.pos}）。`;if(o.situ==='limp')return `${(o.limpSeats||[]).join('、')} limp，輪到你（${o.pos}）。`;if(o.situ==='vsopen'&&o.cold>0)return `${o.opener} 加注到 ${o.openSize}BB，中間 ${o.cold} 個人跟注，輪到你（${o.pos}）。`;if(o.situ==='vsopen')return `${o.opener} 加注到 ${o.openSize}BB，輪到你（${o.pos}）。`;if(o.situ==='vs3b')return `你在 ${o.pos} 開池 ${o.myOpen}BB，${o.tb} 3bet 到 ${o.tbSize}BB，回到你。`;return `${o.shover} 全下 ${q.effbb||q.bbs}BB，輪到你（${o.pos}）。`}
 
 function prOpts(A){const LF=labelFn(A);const out=[];const ks=Object.keys(A.map);
  ks.forEach(k=>{if(k==='b3')return;if(k==='v3'){const lab=LF('v3')[0].replace(/（價值）/,'');out.push({k:'x3',keys:['v3','b3'],lab,cls:'raise'});return}const[lab,cls]=LF(k);out.push({k,keys:[k],lab,cls})});
@@ -1737,12 +1771,12 @@ function tallyHTML(){return `<div class="tally"><div class="tlive" id="tLive"><s
 /* ---------- hand log ---------- */
 function parseHand(t){t=(t||'').trim().replace(/10/g,'T').replace(/\s/g,'');let m=t.match(/^([2-9TJQKA])([shdc])([2-9TJQKA])([shdc])$/i);if(m){const a=m[1].toUpperCase(),b=m[3].toUpperCase();if(a===b&&m[2].toLowerCase()===m[4].toLowerCase())return null;let x=a,y=b,suited=m[2].toLowerCase()===m[4].toLowerCase();if(ri(x)>ri(y))[x,y]=[y,x];return x===y?x+y:x+y+(suited?'s':'o')}
  m=t.match(/^([2-9TJQKA])([2-9TJQKA])([so])?$/i);if(!m)return null;let x=m[1].toUpperCase(),y=m[2].toUpperCase();if(ri(x)>ri(y))[x,y]=[y,x];if(x===y)return m[3]?null:x+y;if(!m[3])return null;return x+y+m[3].toLowerCase()}
-function hlCold(f){f=f||HL;if(f.situ!=='vsopen')return 0;const L=POS[f.n]||[];return Math.max(0,Math.min(3,+f.cold||0,L.indexOf(f.pos)-L.indexOf(f.vpos)-1))}
-function hlColdMax(){if(HL.situ!=='vsopen')return 0;const L=POS[HL.n]||[];return Math.max(0,Math.min(3,L.indexOf(HL.pos)-L.indexOf(HL.vpos)-1))}
-function renderHLCold(){const w=$('hlColdW');if(!w)return;const mx=hlColdMax();if(mx<=0){setH(w,'');return}const cv=hlCold();const hh=`<div class="mut" style="margin-top:8px">他加注後，輪到我之前有幾個人跟注？</div><div class="chips" style="margin-top:6px">${Array.from({length:mx+1},(_,j)=>`<button class="chip ${cv===j?'on':''}" data-cv="${j}">${j===0?'沒有':j+' 人'}</button>`).join('')}</div>`;setH(w,hh)}
+function hlCold(f){f=f||HL;if(f.situ==='vs3b')return Math.max(0,Math.min(2,+f.cold||0,(+f.n||2)-2));if(f.situ!=='vsopen')return 0;const L=POS[f.n]||[];return Math.max(0,Math.min(3,+f.cold||0,L.indexOf(f.pos)-L.indexOf(f.vpos)-1))}
+function hlColdMax(){if(HL.situ==='vs3b')return Math.max(0,Math.min(2,(+HL.n||2)-2));if(HL.situ!=='vsopen')return 0;const L=POS[HL.n]||[];return Math.max(0,Math.min(3,L.indexOf(HL.pos)-L.indexOf(HL.vpos)-1))}
+function renderHLCold(){const w=$('hlColdW');if(!w)return;const mx=hlColdMax();if(mx<=0){setH(w,'');return}const cv=hlCold();const hh=`<div class="mut" style="margin-top:8px">${HL.situ==='vs3b'?'他 3bet 之後，有幾個人跟注？':'他加注後，輪到我之前有幾個人跟注？'}</div><div class="chips" style="margin-top:6px">${Array.from({length:mx+1},(_,j)=>`<button class="chip ${cv===j?'on':''}" data-cv="${j}">${j===0?'沒有':j+' 人'}</button>`).join('')}</div>`;setH(w,hh)}
 function hlOver(f){const L=POS[f.n];const ov={n:f.n,pos:f.pos,situ:f.situ,stack:f.bb*bbN(),vstack:'',ante:0,game:'cash',villain:'',qStyle:'none',qTags:[],cold:0};const vz=toBB(f.vsz)||0;
  if(f.situ==='vsopen'){ov.opener=f.vpos;ov.openSize=vz||(f.vpos==='SB'?OPSB():OPN());ov.cold=hlCold(f)}
- if(f.situ==='vs3b'){ov.tb=f.vpos;ov.myOpen=f.pos==='SB'?OPSB():OPN();const ip3=postIdx(f.vpos)>postIdx(f.pos);ov.tbSize=vz||(ip3?ov.myOpen*3:ov.myOpen*4)}
+ if(f.situ==='vs3b'){ov.cold=hlCold(f);ov.tb=f.vpos;ov.myOpen=f.pos==='SB'?OPSB():OPN();const ip3=postIdx(f.vpos)>postIdx(f.pos);ov.tbSize=vz||(ip3?ov.myOpen*3:ov.myOpen*4)}
  if(f.situ==='vs4b'){ov.opener=f.vpos;ov.openSize=OPN();const ip=postIdx(f.pos)>postIdx(f.vpos);ov.my3b=ip?7.5:10;ov.fbSize=vz||Math.round(ov.my3b*2.2*2)/2}
  if(f.situ==='vsshove')ov.shover=f.vpos;if(f.situ==='limp')ov.limpers=1;if(f.situ==='open'||f.situ==='limp')ov.caller=f.vpos;return ov}
 function hlVposList(n,pos,situ){const L=POS[n];const i=L.indexOf(pos);if(situ==='vs3b'||situ==='open')return L.slice(i+1);if(situ==='limp')return L.slice(0,i);if(['vsopen','vs4b','vsshove'].includes(situ))return L.slice(0,i);return[]}
@@ -1782,9 +1816,22 @@ function hlPrePot(){const p=hlPre();return p?p.pot:null}
 function seqState(seq,rem){let me=0,v=0,checks=0,end=null,allin=false;rem=rem==null?1e9:rem;for(const a of seq){const w=a.who;if(a.a==='fold'){end='fold_'+w;break}if(a.a==='check')checks++;else if(a.a==='call'){if(w==='me')me=v;else v=me;end=Math.max(me,v)>=rem-1e-6?'allin':'call'}else if(a.a==='bet'||a.a==='raise'){if(w==='me')me=Math.min(+a.amt,rem);else v=Math.min(+a.amt,rem)}}
  if(!end&&checks>=2)end='check';return{me,v,end,top:Math.max(me,v)}}
 function seqNext(seq,ip){if(!seq.length)return ip?'v':'me';return seq[seq.length-1].who==='me'?'v':'me'}
-function hlX(st){const mx=Math.max(0,(+HL.n||2)-2);const dx=$('hlAct')&&$('hlAct').value==='call'?hlCold():0;const f=Math.max(0,Math.min(mx,HPS.flop&&HPS.flop.x!=null?+HPS.flop.x:dx));if(st==='flop')return f;const t=Math.max(0,Math.min(f,HPS.turn&&HPS.turn.x!=null?+HPS.turn.x:f));if(st==='turn')return t;return Math.max(0,Math.min(t,HPS.river&&HPS.river.x!=null?+HPS.river.x:t))}
-function hlFlow(){const pre=hlPre();const out={pre,st:{},over:null,meTot:0,vTot:0};if(!pre)return out;let P=pre.pot,R=pre.stack,me=pre.inv,v=pre.inv;
- let pTop=pre.inv;['flop','turn','river'].forEach(st=>{const seq=HPS[st].seq||[];const q=seqState(seq,R);const x=out.over?0:hlX(st);const cdead=st==='flop'?Math.max(0,hlCold()-x)*(hlOver(HL).openSize||0):0;const add=Math.round((x*pTop+cdead)*10)/10;const P1=P;P=Math.round((P+add)*10)/10;out.st[st]={pot:P,rem:R,q,x,xr:P1>0?add/P1:0};if(out.over)return;pTop=Math.max(q.me,q.v);P=Math.round((P+q.me+q.v)*10)/10;me+=q.me;v+=q.v;R=Math.max(0,R-Math.max(q.me,q.v));if(q.end&&(q.end.startsWith('fold')||q.end==='allin'))out.over=q.end;if(R<=1e-6&&!out.over)out.over='allin'});
+function hlX(st){const mx=Math.max(0,(+HL.n||2)-2);const dx=0;const f=Math.max(0,Math.min(mx,HPS.flop&&HPS.flop.x!=null?+HPS.flop.x:dx));if(st==='flop')return f;const t=Math.max(0,Math.min(f,HPS.turn&&HPS.turn.x!=null?+HPS.turn.x:f));if(st==='turn')return t;return Math.max(0,Math.min(t,HPS.river&&HPS.river.x!=null?+HPS.river.x:t))}
+function hlSeats(){const L=POS[HL.n]||[];const vp=hlVill();const ok=p=>L.includes(p)&&p!==HL.pos&&p!==vp;let a=HPS.seats;if(a==null){a=[];if(HL.situ==='vsopen'&&$('hlAct')&&$('hlAct').value==='call'){const hi=L.indexOf(HL.pos),oi=L.indexOf(HL.vpos);a=L.slice(Math.max(oi+1,hi-hlCold()),hi)}}return a.filter(ok)}
+function hlPostOrder(ids){const L=POS[HL.n]||[];const pi=p=>p==='SB'?0:p==='BB'?1:L.indexOf(p)+2;const po=i=>i==='me'?HL.pos:i;return ids.slice().sort((a,b)=>pi(po(a))-pi(po(b)))}
+function seqStateN(seq,alive,rem){const al=new Set(alive);const c={};alive.forEach(i=>c[i]=0);let top=0,acted=new Set(),last=null;rem=rem==null?1e9:rem;
+ for(const a of seq){const id=a.who==='me'?'me':a.pos;if(!al.has(id))continue;last=id;if(a.a==='fold')al.delete(id);else if(a.a==='check')acted.add(id);else if(a.a==='call'){c[id]=top;acted.add(id)}else{c[id]=Math.min(+a.amt,rem);top=c[id];acted=new Set([id])}}
+ const inL=alive.filter(i=>al.has(i));const sum=Object.values(c).reduce((x,y)=>x+y,0);let next=null;
+ if(al.has('me')&&inL.length>1){const N=alive.length,st=last?alive.indexOf(last):-1;for(let k=1;k<=N;k++){const id=alive[(st+k+N)%N];if(!al.has(id))continue;if(!acted.has(id)||c[id]<top-1e-9){next=id;break}}}
+ const v=Math.max(0,...alive.filter(i=>i!=='me').map(i=>c[i]));let end=null;if(!al.has('me'))end='fold_me';else if(inL.length===1)end='fold_v';else if(!next)end=top>=rem-1e-6?'allin':top>0?'call':'check';
+ return{me:c.me||0,v,top,end,sum,inL,next,c}}
+function hlFlowM(pre,seats){const out={pre,st:{},over:null,meTot:0,vTot:0,multi:true};const ov=hlOver(HL);const cz=(HL.situ==='vs3b'?ov.tbSize:ov.openSize)||0;
+ let add=seats.reduce((a,p)=>a+Math.max(0,pre.inv-hlBlind(p)),0);add+=Math.max(0,hlCold()-seats.length)*cz;add=Math.round(add*10)/10;
+ let P=Math.round((pre.pot+add)*10)/10,R=pre.stack,me=pre.inv;let alive=hlPostOrder(['me',hlVill(),...seats]);const xr0=pre.pot>0?add/pre.pot:0;
+ ['flop','turn','river'].forEach((st,i)=>{const seq=HPS[st].seq||[];const q=seqStateN(seq,alive,R);out.st[st]={pot:P,rem:R,q,x:alive.length-2,xr:i===0?xr0:0,alive:alive.slice()};if(out.over)return;P=Math.round((P+q.sum)*10)/10;me+=q.me;R=Math.max(0,R-q.top);alive=q.inL;if(q.end&&(q.end.startsWith('fold')||q.end==='allin'))out.over=q.end;if(R<=1e-6&&!out.over)out.over='allin'});
+ out.meTot=me;out.pot=P;out.dead=pre.dead;return out}
+function hlFlow(){const pre=hlPre();const out={pre,st:{},over:null,meTot:0,vTot:0};if(!pre)return out;{const ss=hlSeats();if(ss.length)return hlFlowM(pre,ss)}let P=pre.pot,R=pre.stack,me=pre.inv,v=pre.inv;
+ let pTop=pre.inv;['flop','turn','river'].forEach(st=>{const seq=HPS[st].seq||[];const q=seqState(seq,R);const x=out.over?0:hlX(st);const cdead=st==='flop'?Math.max(0,hlCold()-x)*((HL.situ==='vs3b'?hlOver(HL).tbSize:hlOver(HL).openSize)||0):0;const add=Math.round((x*pTop+cdead)*10)/10;const P1=P;P=Math.round((P+add)*10)/10;out.st[st]={pot:P,rem:R,q,x,xr:P1>0?add/P1:0};if(out.over)return;pTop=Math.max(q.me,q.v);P=Math.round((P+q.me+q.v)*10)/10;me+=q.me;v+=q.v;R=Math.max(0,R-Math.max(q.me,q.v));if(q.end&&(q.end.startsWith('fold')||q.end==='allin'))out.over=q.end;if(R<=1e-6&&!out.over)out.over='allin'});
  out.meTot=me;out.vTot=v;out.pot=P;out.dead=pre.dead;return out}
 function hlStreetPots(){const F=hlFlow();const o={};['flop','turn','river'].forEach(st=>o[st]=F.st[st]?F.st[st].pot:null);return o}
 const WHO={me:'我',v:'對手'};const AW={check:'過牌',bet:'下注',call:'跟注',raise:'加注到',fold:'棄牌',allin:'全下'};
@@ -1794,21 +1841,22 @@ function quickSizes(a,q,P,rem){const r5=x=>Math.max(.5,Math.round(x*2)/2);let L=
 function renderHLStreets(){const w=$('hlStreets');if(!w)return;if(!hlPostOK()){$('hlPostW').style.display='none';w.innerHTML='';return}$('hlPostW').style.display='';{const pr=hlPre();if(pr&&pr.stack<=1e-6){w.innerHTML='<div class="sqend">翻牌前已經全下，不用記翻後動作，直接到下面填結果。</div>';hlAutoRes();return}}const nb=BC.findIndex(x=>!x)<0?5:BC.findIndex(x=>!x);const F=hlFlow();const ip=hlHeroIP();let stop=false;
  w.innerHTML=['flop','turn','river'].map((st,i)=>{if(stop||nb<3+i)return '';const seq=HPS[st].seq||(HPS[st].seq=[]);const S0=F.st[st];if(!S0)return '';const q=S0.q,rem=S0.rem,P=S0.pot;
   if(rem<=1e-6){stop=true;return ''}
-  const tags=seq.map(a=>{const ai=(a.a==='bet'||a.a==='raise')&&+a.amt>=rem-1e-6;return `<span class="sq ${a.who}">${WHO[a.who]} ${ai?'全下 '+fU(rem)+UL():AW[a.a]+(a.amt?' '+fU(Math.min(+a.amt,rem))+UL():'')}</span>`}).join('<span class="sqa">→</span>');
-  let next='';if(q.end){next=`<div class="sqend">${q.end==='check'?'雙方過牌 → 下一條街':q.end==='call'?'跟注 → 這條街結束':q.end==='allin'?'全下被跟注 → 直接比牌，請到下面填結果':q.end==='fold_me'?'我棄牌 → 手牌結束，請到下面確認結果':'對手棄牌 → 我贏下底池，結果已自動算好'}</div>`;if(q.end.startsWith('fold')||q.end==='allin')stop=true}
-  else{const who=seqNext(seq,ip);const facing=who==='me'?q.v>q.me:q.me>q.v;const facingAI=facing&&q.top>=rem-1e-6;const btn=facing?(facingAI?[['call','跟注全下'],['fold','棄牌']]:[['call','跟注'],['raise','加注'],['fold','棄牌']]):[['check','過牌'],['bet','下注']];
+  const MM=!!F.multi;const tags=seq.map(a=>{const ai=(a.a==='bet'||a.a==='raise')&&+a.amt>=rem-1e-6;return `<span class="sq ${a.who==='me'?'me':'v'}">${MM&&a.pos?a.pos:WHO[a.who]} ${ai?'全下 '+fU(rem)+UL():AW[a.a]+(a.amt?' '+fU(Math.min(+a.amt,rem))+UL():'')}</span>`}).join('<span class="sqa">→</span>');
+  let next='';if(q.end){next=`<div class="sqend">${q.end==='check'?'雙方過牌 → 下一條街':q.end==='call'?'跟注 → 這條街結束':q.end==='allin'?'全下被跟注 → 直接比牌，請到下面填結果':q.end==='fold_me'?'我棄牌 → 手牌結束，請到下面確認結果':MM?'其他人都棄牌 → 我贏下底池，結果已自動算好':'對手棄牌 → 我贏下底池，結果已自動算好'}</div>`;if(q.end.startsWith('fold')||q.end==='allin')stop=true}
+  else{const who=MM?q.next:seqNext(seq,ip);const facing=MM?q.c[who]<q.top-1e-9:who==='me'?q.v>q.me:q.me>q.v;const facingAI=facing&&q.top>=rem-1e-6;const btn=facing?(facingAI?[['call','跟注全下'],['fold','棄牌']]:[['call','跟注'],['raise','加注'],['fold','棄牌']]):[['check','過牌'],['bet','下注']];
    const pend=HLPEND&&HLPEND.st===st?HLPEND:null;
-   next=`<div class="hrow"><span class="${who}">${WHO[who]}</span><div class="chips">${btn.map(([k,t])=>`<button class="chip ${pend&&pend.a===k?'on':''}" data-sa="${k}" data-who="${who}">${t}</button>`).join('')}</div></div>`;
-   if(pend){const qs=quickSizes(pend.a,q,P,rem);next+=`<div class="hsz"><div class="mut">${WHO[who]}${pend.a==='bet'?'下注多少':'加注到多少'}？（點一下就記錄）</div><div class="chips" style="margin-top:6px">${qs.map(([t,x])=>`<button class="chip" data-qz="${x}">${t} <b>${fU(x)}</b></button>`).join('')}</div>
+   next=`<div class="hrow"><span class="${who==='me'?'me':'v'}">${MM&&who!=='me'?who:WHO[who]}</span><div class="chips">${btn.map(([k,t])=>`<button class="chip ${pend&&pend.a===k?'on':''}" data-sa="${k}" data-who="${who}">${t}</button>`).join('')}</div></div>`;
+   if(pend){const qs=quickSizes(pend.a,q,P,rem);next+=`<div class="hsz"><div class="mut">${MM&&who!=='me'?who:WHO[who]}${pend.a==='bet'?'下注多少':'加注到多少'}？（點一下就記錄）</div><div class="chips" style="margin-top:6px">${qs.map(([t,x])=>`<button class="chip" data-qz="${x}">${t} <b>${fU(x)}</b></button>`).join('')}</div>
     <div class="row" style="margin-top:6px"><input class="hamt" style="flex:1;min-width:90px" id="hamt_${st}" placeholder="自己填 ${ULN()}" type="number" inputmode="decimal" enterkeyhint="done"><button class="btn sm pri" data-qok="1">確定</button><button class="btn sm" data-qx="1">取消</button></div></div>`}
    stop=true}
-  const xm=st==='flop'?Math.max(0,(+HL.n||2)-2):hlX(st==='turn'?'flop':'turn');const xv=S0.x||0;
-  const xrow=xm>0?`<div class="mwrow"><span class="mut">除了「對手」，這條街還有幾位其他玩家沒棄牌？</span><div class="chips" style="margin-top:5px">${Array.from({length:Math.min(4,xm)+1},(_,j)=>`<button class="chip ${xv===j?'on':''}" data-mx="${j}">${j===0?'0（單挑）':'+'+j+' 位'}</button>`).join('')}</div>${xv>0&&st==='flop'?'<div class="mut" style="font-size:12px;margin-top:4px">多人底池：「對手」記跟你對抗最多的那位（通常是下注或加注的人）。底池已把其他人跟進的錢算進去。</div>':''}</div>`:'';
+  const xv=S0.x||0;const Ls=(POS[HL.n]||[]).filter(p=>p!==HL.pos&&p!==hlVill());const selS=hlSeats();
+  const xrow=st==='flop'&&Ls.length?`<div class="mwrow"><span class="mut">除了你和對手（${hlVill()}），還有誰也看了翻牌？（點位置，可多選；單挑就不用點）</span><div class="chips" style="margin-top:5px">${Ls.map(p=>`<button class="chip ${selS.includes(p)?'on':''}" data-ms="${p}">${p}</button>`).join('')}</div>${selS.length?'<div class="mut" style="font-size:12px;margin-top:4px">多人底池：下面會照位置順序，一個一個問每個人做了什麼；底池照大家實際放的錢算。</div>':''}</div>`:(MM&&S0.alive&&st!=='flop'?`<div class="mut" style="font-size:12px;margin:2px 0 6px">還在的人：${S0.alive.map(i=>i==='me'?'我':i).join('、')}</div>`:'');
   return `<div class="hst" data-st="${st}"><div class="hsth"><b>${STN[st]}</b><span class="mut">底池 <b>${fU(P)}</b>${UL()}・剩 ${fU(rem)}${UL()}${ip?'・我有位置':'・我先動'}${xv>0?'・共 '+(xv+2)+' 人':''}</span></div>${xrow}
   ${seq.length?`<div class="sqs">${tags}</div>`:''}${next}${seq.length?`<button class="btn sm squndo" data-undo="1">↶ 上一步</button>`:''}</div>`}).join('')||'<div class="mut" style="margin-top:6px">選好翻牌三張後，這裡會出現每條街的動作。</div>';
  hlAutoRes(F)}
-function hlPush(st,who,a,amt){const H=HPS[st];const S0=hlFlow().st[st];const ai=amt!=null&&S0&&amt>=S0.rem-1e-6;H.seq.push(ai?{who,a,amt:S0.rem,ai:true}:{who,a,amt});HLPEND=null;['flop','turn','river'].slice(['flop','turn','river'].indexOf(st)+1).forEach(x=>HPS[x]={seq:[]});renderHLStreets();hlDraftSave()}
+function hlPush(st,who,a,amt){const H=HPS[st];const S0=hlFlow().st[st];const ai=amt!=null&&S0&&amt>=S0.rem-1e-6;{const MM=!!hlSeats().length;const ent=MM?{who:who==='me'?'me':(who===hlVill()?'v':'x'),a,amt}:{who,a,amt};if(MM&&who!=='me')ent.pos=who;if(ai){ent.amt=S0.rem;ent.ai=true}H.seq.push(ent)}HLPEND=null;['flop','turn','river'].slice(['flop','turn','river'].indexOf(st)+1).forEach(x=>HPS[x]={seq:[]});renderHLStreets();hlDraftSave()}
 function hlBindStreets(){const w=$('hlStreets');w.onclick=e=>{const box=e.target.closest('[data-st]');if(!box)return;const st=box.dataset.st;const H=HPS[st];H.seq=H.seq||[];const F=hlFlow();const S0=F.st[st];
+ {const sb=e.target.closest('[data-ms]');if(sb){const cur=hlSeats();const p0=sb.dataset.ms;const i0=cur.indexOf(p0);if(i0>=0)cur.splice(i0,1);else cur.push(p0);HPS.seats=cur;['flop','turn','river'].forEach(k=>HPS[k]={seq:[]});HLPEND=null;renderHLStreets();hlDraftSave();return}}
  {const mb=e.target.closest('[data-mx]');if(mb){H.x=+mb.dataset.mx;const o=['flop','turn','river'];o.slice(o.indexOf(st)+1).forEach(k=>{if(HPS[k].x!=null&&HPS[k].x>H.x)HPS[k].x=H.x});HLPEND=null;renderHLStreets();hlDraftSave();return}}
  if(e.target.closest('[data-undo]')){H.seq.pop();HLPEND=null;['flop','turn','river'].slice(['flop','turn','river'].indexOf(st)+1).forEach(x=>HPS[x]={seq:[]});renderHLStreets();hlDraftSave();return}
  if(e.target.closest('[data-qx]')){HLPEND=null;renderHLStreets();return}
@@ -1823,7 +1871,7 @@ function hlConfirm(st){const inp=$('hamt_'+st);const F=hlFlow();const S0=F.st[st
 /* result */
 let HLSIGN=0,HLRESMAN=false;
 function hlAutoRes(F){F=F||hlFlow();const hint=$('hlResHint');if(!hint)return;let txt='';
- const fx=F.over==='fold_v'?['flop','turn','river'].map(k=>F.st[k]).filter(z=>z&&z.q.end==='fold_v').map(z=>z.x)[0]||0:0;
+ const fx=F.multi?0:F.over==='fold_v'?['flop','turn','river'].map(k=>F.st[k]).filter(z=>z&&z.q.end==='fold_v').map(z=>z.x)[0]||0:0;
  if(F.pre&&F.over==='fold_v'&&fx>0){txt='這位對手棄牌了，但還有其他玩家：請自己點「贏／輸」並填金額。'}
  else if(F.pre&&F.over==='fold_v'){const win=F.pot-F.meTot;txt=`對手棄牌：你贏 ${fU(win)}${UL()||' 籌碼'}（已自動填好）`;if(!HLRESMAN){HLSIGN=1;$('hlRes').value=fU(win)}}
  else if(F.pre&&F.over==='fold_me'){txt=`你棄牌：輸掉投入的 ${fU(F.meTot)}${UL()||' 籌碼'}（已自動填好）`;if(!HLRESMAN){HLSIGN=-1;$('hlRes').value=fU(F.meTot)}}
@@ -1833,7 +1881,7 @@ function renderSign(){document.querySelectorAll('#hlSign [data-sg]').forEach(b=>
 function hlSignClick(sg){HLRESMAN=false;const F=hlFlow();HLSIGN=sg;if(F.pre&&F.over!=='fold_v'&&F.over!=='fold_me'&&hlPostOK()&&(F.st.flop&&F.st.flop.q.end||F.over)){const v=sg===1?F.pot-F.meTot:sg===-1?F.meTot:Math.abs(F.pot/2-F.meTot);$('hlRes').value=fU(v);HLRESMAN=false}renderSign();hlDraftSave()}
 /* draft */
 function hlDraftSave(){try{if(!$('hlHand').value&&!$('hlAct').value&&!BC[0]&&!$('hlRes').value){localStorage.removeItem('hlDraft');return}localStorage.setItem('hlDraft',JSON.stringify({HL,HC,BC,VC,HPS,act:$('hlAct').value,amt:$('hlAmt').value,vsz:$('hlVsz').value,hand:$('hlHand').value,res:$('hlRes').value,sign:HLSIGN,man:HLRESMAN,note:$('hlNote').value,tags:[...HLT]}))}catch(e){}}
-function hlDraftLoad(){try{const d=JSON.parse(localStorage.getItem('hlDraft')||'null');if(!d)return;Object.assign(HL,d.HL);HC=d.HC;BC=d.BC;VC=d.VC||[null,null];['flop','turn','river'].forEach(k=>HPS[k]=d.HPS[k]||{seq:[]});$('hlAct').value=d.act||'';$('hlAmt').value=d.amt||'';$('hlVsz').value=d.vsz||'';$('hlHand').value=d.hand||'';$('hlRes').value=d.res||'';HLSIGN=d.sign||0;HLRESMAN=!!d.man;$('hlNote').value=d.note||'';hlSync();(d.tags||[]).forEach(t=>{HLT.add(t);const b=document.querySelector(`#hlTags [data-tg="${t}"]`);if(b)b.classList.add('on')})}catch(e){}}
+function hlDraftLoad(){try{const d=JSON.parse(localStorage.getItem('hlDraft')||'null');if(!d)return;Object.assign(HL,d.HL);HC=d.HC;BC=d.BC;VC=d.VC||[null,null];['flop','turn','river'].forEach(k=>HPS[k]=d.HPS[k]||{seq:[]});HPS.seats=d.HPS.seats||null;$('hlAct').value=d.act||'';$('hlAmt').value=d.amt||'';$('hlVsz').value=d.vsz||'';$('hlHand').value=d.hand||'';$('hlRes').value=d.res||'';HLSIGN=d.sign||0;HLRESMAN=!!d.man;$('hlNote').value=d.note||'';hlSync();(d.tags||[]).forEach(t=>{HLT.add(t);const b=document.querySelector(`#hlTags [data-tg="${t}"]`);if(b)b.classList.add('on')})}catch(e){}}
 function hlModeUI(){const f=$('hlForm');if(!f)return;f.classList.toggle('quick',HL.mode==='quick');document.querySelectorAll('#hlMode [data-m]').forEach(b=>b.classList.toggle('on',b.dataset.m===HL.mode));const sv=$('hlSave');if(sv)sv.textContent=HL.editId?(HL.mode==='quick'?'⚡ 更新（仍待補）':'✅ 補完並檢討'):(HL.mode==='quick'?'⚡ 先存起來（回家再補）':'儲存並檢討');renderPend()}
 function renderPend(){const el=$('hlPend');if(!el)return;const P=HANDS.filter(x=>x.pending).sort((a,b)=>b.t-a.t);if(!P.length){el.innerHTML='';return}
  el.innerHTML=`<div class="card pendc"><b>📌 待補 ${P.length} 手</b><span class="mut" style="font-size:12.5px">　回家有空點「補完」，教練就會幫你檢討</span>${P.slice(0,10).map(x=>`<div class="pendrow"><div><b>${x.hc?cardsHTML(x.hc):(x.h||'？')}</b> <span class="mut">${x.pos}・${x.date.slice(5)}</span>${x.res!=null?` <span class="${x.res>=0?'pos':'neg'}">${x.res>=0?'+':''}${x.res}BB</span>`:''}${(x.tags||[]).map(t=>({memo:'⭐',lose:'💸',win:'💰'}[t]||'')).join('')}${x.note?`<div class="mut" style="font-size:12px">${esc(x.note.slice(0,40))}</div>`:''}</div><button class="btn sm pri" data-ed="${x.id}">補完</button></div>`).join('')}</div>`;
@@ -1844,7 +1892,7 @@ function hlEdit(id){const x=HANDS.find(y=>y.id===id);if(!x)return;hlReset();HL.e
  if(x.act&&x.cls!=='pend')$('hlAct').value=x.act;if(x.res!=null){HLSIGN=x.res>0?1:x.res<0?-1:2;$('hlRes').value=fU(Math.abs(x.res));HLRESMAN=true}
  $('hlNote').value=x.note||'';(x.tags||[]).forEach(t=>{HLT.add(t);const b=document.querySelector(`#hlTags [data-tg="${t}"]`);if(b)b.classList.add('on')});if(x.vid)$('hlOpp').value=x.vid;
  renderHL();renderSign();setTimeout(()=>$('hlForm').scrollIntoView({behavior:'smooth'}),50);toast('已帶入，補上動作和翻後再按「補完並檢討」')}
-function hlReset(){HL.editId=null;HL.cold=0;VC=[null,null];HC=[null,null];BC=[null,null,null,null,null];HLAS=null;HLPEND=null;['flop','turn','river'].forEach(k=>HPS[k]={seq:[]});['hlHand','hlRes','hlNote','hlBoard','hlAct','hlAmt','hlVsz'].forEach(id=>$(id).value='');HL.vsz='';HLSIGN=0;HLRESMAN=false;HLT.clear();document.querySelectorAll('#hlTags .chip').forEach(c=>c.classList.remove('on'));try{localStorage.removeItem('hlDraft')}catch(e){}renderHL()}
+function hlReset(){HL.editId=null;HL.cold=0;HPS.seats=null;VC=[null,null];HC=[null,null];BC=[null,null,null,null,null];HLAS=null;HLPEND=null;['flop','turn','river'].forEach(k=>HPS[k]={seq:[]});['hlHand','hlRes','hlNote','hlBoard','hlAct','hlAmt','hlVsz'].forEach(id=>$(id).value='');HL.vsz='';HLSIGN=0;HLRESMAN=false;HLT.clear();document.querySelectorAll('#hlTags .chip').forEach(c=>c.classList.remove('on'));try{localStorage.removeItem('hlDraft')}catch(e){}renderHL()}
 function renderHL(){const el=$('hlForm');if(!el)return;const L=POS[HL.n];if(!L.includes(HL.pos))HL.pos=L[L.length-3]||L[0];const vl=hlVposList(HL.n,HL.pos,HL.situ);if(vl.length&&!vl.includes(HL.vpos))HL.vpos=vl[vl.length-1];
  const h=parseHand($('hlHand')?$('hlHand').value:'');let opts=[];if(h&&!(HL.situ==='open'&&HL.pos==='BB')&&(vl.length||!['vsopen','vs3b','vs4b','vsshove'].includes(HL.situ))){const A=withSitu(hlOver(HL),()=>baseAdvice('AA'));if(!A.fixed)opts=prOpts(A)}
  setH($('hlN'),[2,3,4,5,6,7,8,9,10].map(n=>`<option ${HL.n===n?'selected':''}>${n}</option>`).join(''));
@@ -1868,10 +1916,10 @@ function analyzePost(ov,h,handTxt,preK,boardTxt,streets,vcTxt){const vc=parseCar
  const cards=heroCardsFor(handTxt,h,board.concat(vc));if(cards.some(c=>!c.s))return[];const savePS=JSON.parse(JSON.stringify(PS));const res=[];
  withSitu(Object.assign({},ov,{cards,villain:'',qStyle:'none',qTags:[]}),()=>{const lr=lineRanges(line);let pot=lr.pot,stack=lr.stack;
   let over=false;['flop','turn','river'].forEach((st,i)=>{const sd=streets[st];const nb=3+i;if(over||!sd||!sd.seq||board.length<nb)return;
-   const bk0=bucketOf(cards.map(cInt),board.slice(0,nb).map(cInt));let me=0,v=0,lastVai=false;const sx=Math.max(0,Math.min(4,+sd.x||0));if(sd.xr>0)pot=Math.round(pot*(1+sd.xr)*10)/10;const P0=pot;
+   const bk0=bucketOf(cards.map(cInt),board.slice(0,nb).map(cInt));let me=0,v=0,lastVai=false;const MMx=!!(sd.multi&&sd.alive);const oc={};let oal=MMx?sd.alive.slice():[];if(MMx)oal.forEach(i=>oc[i]=0);const osum=()=>Object.values(oc).reduce((x,y)=>x+y,0);const sx=Math.max(0,Math.min(4,+sd.x||0));if(sd.xr>0)pot=Math.round(pot*(1+sd.xr)*10)/10;const P0=pot;
    for(const a of sd.seq){if(over)break;
     if(a.who==='me'){const facing=v>me;const vsR=facing&&me>0;
-     PS.board=[0,1,2,3,4].map(j=>j<nb?board[j]:null);PS.line=line;PS.ip=lr.ip;PS.aggr=lr.aggr;PS.pot=Math.round((P0+2*me)*10)/10;PS.stack=Math.max(.5,Math.round((stack-me)*10)/10);PS.facing=facing?'bet':'none';PS.bet=facing?Math.round((v-me)*10)/10:0;PS.vsRaise=vsR;PS.range='auto';PS.opp=1+sx;
+     PS.board=[0,1,2,3,4].map(j=>j<nb?board[j]:null);PS.line=line;PS.ip=lr.ip;PS.aggr=lr.aggr;PS.pot=Math.round((P0+2*me+(MMx?osum()-Math.max(me,v):0))*10)/10;PS.stack=Math.max(.5,Math.round((stack-me)*10)/10);PS.facing=facing?'bet':'none';PS.bet=facing?Math.round((v-me)*10)/10:0;PS.vsRaise=vsR;PS.range='auto';PS.opp=MMx?Math.max(1,oal.length):1+sx;if(MMx){const vp=sd.vpos;if(oal.includes(vp)){PS.vilSeat=null;PS.oppSeats=oal.filter(i=>i!==vp)}else{PS.vilSeat=oal[0]||null;PS.oppSeats=oal.slice(1)}}else{PS.vilSeat=null;PS.oppSeats=null}
      RNGS.post=null;window.LASTPX=null;let rows=[];try{runPost();rows=RNGS.post||[]}catch(e){rows=[]}const X=window.LASTPX||{};if(rows.length&&facing&&lastVai)rows=fhMergeAI(rows,Math.round((v-me)*10)/10);
      if(rows.length){const w=ACTW[a.a==='raise'?'raise':a.a];let f=0;rows.forEach(r=>{const l=r.lab;if((w==='下注'&&(l.startsWith('下注')||l.startsWith('全下')))||(w==='加注'&&(l.startsWith('加注')||l.startsWith('再加注')))||l.startsWith(w))f+=r.f});
       const topF=Math.max(0,...rows.map(r=>r.f));let cls=(f>=.4||f>=topF-.05)?'pos':f>=.15?'warnc':'neg';let evPct=X.evList?evMatch(X.evList,a.a,a.a==='bet'&&P0?Math.round(a.f*100):null):null;if(evPct!=null&&f>=.2&&evPct>3)evPct=null;cls=evAdjust(cls,evPct);if(cls==='neg'&&evPct!=null&&evPct<=2)evPct=null;const evBB=evPct!=null?Math.round(evPct/100*(P0+2*me)*10)/10:null;const foldF=(rows.find(r=>r.k==='fold'||/^棄牌/.test(r.lab))||{f:0}).f;const err=cls!=='neg'?'':a.a==='fold'?'tight':(facing&&foldF>=.5)?'loose':'line';
@@ -1879,8 +1927,9 @@ function analyzePost(ov,h,handTxt,preK,boardTxt,streets,vcTxt){const vc=parseCar
       let eqV=null;if(vc.length===2){try{eqV=Math.round(equity(cards.map(cInt),board.slice(0,nb).map(cInt),[{c:vc.map(cInt),w:1}],nb===5?1:1500)*100)}catch(e){}}
       res.push({evPct,evBB,det,eqV,st,board:board.slice(0,nb).map(c=>c.r+c.s).join(''),facing,vsR,size:facing?(v-me)/(P0+2*me):(a.f||0),act:a.a,f:Math.round(f*100),cls,err:det.soft?'':err,valid:true,opp:PS.opp,pot:PS.pot,eff:PS.stack,tocall:PS.bet,bk:BKN[bk0]||bk0,rec:rows.map(r=>`${r.lab.replace(/（.*?）/,'')} ${Math.round(r.f*100)}%`).join('／')})}
      if(a.a==='fold'){over=true;break}if(a.a==='call')me=v;else if(a.a==='bet'||a.a==='raise')me=Math.max(a.f*P0,v+.1)}
+    else if(MMx){const id=a.pos;if(!oal.includes(id))continue;const top=Math.max(me,v);if(a.a==='fold'){oal=oal.filter(i=>i!==id);if(!oal.length){over=true;break}}else if(a.a==='call')oc[id]=top;else if(a.a==='bet'||a.a==='raise'){oc[id]=Math.max(a.f*P0,top+.1);lastVai=!!a.ai}v=Math.max(0,...Object.values(oc))}
     else{if(a.a==='fold'){over=true;break}lastVai=!!a.ai;if(a.a==='call')v=me;else if(a.a==='bet'||a.a==='raise')v=Math.max(a.f*P0,me+.1)}}
-   pot=P0+me+v;stack-=Math.max(me,v)})});
+   pot=MMx?P0+me+osum():P0+me+v;stack-=Math.max(me,v)})});
  PS.vsRaise=false;
  Object.assign(PS,savePS);try{schedulePost()}catch(e){}return res}
 function WOK(p){return p.f>=35}
@@ -1888,7 +1937,7 @@ function WOK(p){return p.f>=35}
 function estSoft(cls,det,act,facing){if(det.src!=='est')return cls;if(facing&&det.need!=null&&det.eq!=null){const df=det.eq-det.need;if(cls==='pos'&&((act==='call'&&df<-5)||(act==='fold'&&df>5)))det.mix='against';else if(cls==='warnc'&&((act==='fold'&&df<-5)||(act==='call'&&df>5)))det.mix='with'}if(cls!=='neg')return cls;const hard=facing&&det.need!=null&&det.eq!=null&&((act==='fold'&&det.eq>=det.need+15)||(act==='call'&&det.eq<=det.need-15));if(hard){det.hard=true;return cls}det.soft=true;return 'warnc'}
 function estWords(rec){const a=String(rec||'').split('／').map(x=>{const m=x.match(/^(.*?)\s*(\d+)%$/);return m?{l:m[1].replace(/\s*(Fold|Call|Check)$/i,''),f:+m[2]}:null}).filter(Boolean).sort((x,y)=>y.f-x.f);if(!a.length)return '';
  if(a[0].f>=70||a.length===1||a[1].f<20)return `多半「${a[0].l}」`;return `「${a[0].l}」較多，「${a[1].l}」也常見`}
-function oddsTxt(p){const d=p.det||{};if(d.need==null||d.eq==null)return d.eq!=null&&!p.facing?`你對他範圍的勝率估計約 ${d.eq}%。`:'';const df=d.eq-d.need;
+function oddsTxt(p){const d=p.det||{};if(d.need==null||d.eq==null)return d.eq!=null&&!p.facing?(d.eq<=1?'你對他的範圍幾乎沒有勝率（這手牌比牌贏不了）。':d.eq>=99?'你對他的範圍幾乎穩贏。':`你對他範圍的勝率估計約 ${d.eq}%。`):'';const df=d.eq-d.need;
  if(Math.abs(df)<=5)return `需要 ${d.need}% 勝率才划算，估計有 ${d.eq}%，差距很小：跟注和棄牌的價值差不多。`;
  if((p.act==='call'&&df<0&&p.cls==='pos')||(p.act==='fold'&&df>0&&p.cls==='pos'))return '';
  return `需要 ${d.need}% 勝率才划算，估計有 ${d.eq}%。`}
@@ -1935,8 +1984,8 @@ function saveHL(){const quick=HL.mode==='quick';const h=parseHand($('hlHand').va
  const f=opt.keys.reduce((a,x)=>a+(x==='fold'?1-tot(o):(o[x]||0)),0);const fam=['v3','b3','shove','raise'];const famTot=fam.reduce((a,x)=>a+(o[x]||0),0);const inFam=opt.keys.some(x=>fam.includes(x));
  const topF0=Math.max(0,...prOpts(A).map(x=>x.keys.reduce((a,y)=>a+(y==='fold'?1-tot(o):(o[y]||0)),0)));const cls=(f>=.5||f>=topF0-.05||(inFam&&famTot>=.5&&f>=.2))?'pos':f>=.15?'warnc':'neg';const rows=stratRows(o,LF);
  const old=HL.editId?HANDS.find(y=>y.id===HL.editId):null;const x={id:old?old.id:uid(),t:old?old.t:Date.now(),date:old?old.date:new Date().toISOString().slice(0,10),pending:quick&&!$('hlBoard').value,n:HL.n,pos:HL.pos,situ:HL.situ,vpos:HL.vpos,bb:HL.bb,h,act:k,actLab:(()=>{const am=Math.round(toBB($('hlAmt').value)*10)/10,da=labAmt(opt.lab);return am&&da&&am!==da?`${simpLab(opt.lab)}到 ${am}BB`:opt.lab})(),sizeNote:(()=>{const am=Math.round(toBB($('hlAmt').value)*10)/10,da=labAmt(opt.lab);if(!am||!da)return'';const r=am/da;return r>=1.45?`你加到 ${am}BB，比建議的 ${da}BB 大不少：大尺寸會讓對手只用好牌跟，你的中等牌會變難打；想用大尺寸，入池範圍要再收緊一點。`:r<=.7?`你加到 ${am}BB，比建議的 ${da}BB 小很多：給對手太好的跟注賠率。`:''})(),gto:rows.map(r=>`${r.lab} ${Math.round(r.f*100)}%`).join('／'),f:Math.round(f*100),cls,err:errKind(o,opt.keys,f),fam:famOf(ov,A),res:HLRESV,vid:$('hlOpp').value,note:$('hlNote').value.trim(),updated:Date.now(),tags:[...HLT]};
- const streets={};const pots=hlStreetPots();const FL=hlFlow();['flop','turn','river'].forEach(st=>{const seq=HPS[st].seq||[];if(!seq.some(x=>x.who==='me'))return;const P=pots[st]||5.5;const z=FL.st[st]||{};streets[st]={x:z.x||0,xr:z.xr||0,seq:seq.map(x=>({who:x.who,a:x.a,f:x.amt?x.amt/P:0,ai:!!x.ai}))}});x.mw=Math.max(0,...['flop','turn','river'].map(st=>streets[st]?streets[st].x:0));x.cold=hlCold();const need='';const bt=hlPostOK()?$('hlBoard').value.trim():'';if(need&&bt){toast('請填'+need);return}if(bt&&parseCards(bt).length<3){toast('公牌至少要選 3 張');return}
- x.seqTxt={};if(bt)['flop','turn','river'].forEach(st=>{const q=HPS[st].seq||[];if(q.length)x.seqTxt[st]=q.map(a=>`${WHO[a.who]}${a.ai?'全下':AW[a.a]}${a.amt?' '+(Math.round(a.amt*10)/10)+'BB':''}`).join(' → ')});
+ const streets={};const pots=hlStreetPots();const FL=hlFlow();['flop','turn','river'].forEach(st=>{const seq=HPS[st].seq||[];if(!seq.some(x=>x.who==='me'))return;const P=pots[st]||5.5;const z=FL.st[st]||{};streets[st]={x:z.x||0,xr:z.xr||0,multi:!!FL.multi,alive:FL.multi&&z.alive?z.alive.filter(i=>i!=='me'):null,vpos:hlVill(),seq:seq.map(x=>({who:x.who,pos:x.pos,a:x.a,f:x.amt?x.amt/P:0,ai:!!x.ai}))}});x.mw=Math.max(0,...['flop','turn','river'].map(st=>streets[st]?streets[st].x:0));x.cold=hlCold();const need='';const bt=hlPostOK()?$('hlBoard').value.trim():'';if(need&&bt){toast('請填'+need);return}if(bt&&parseCards(bt).length<3){toast('公牌至少要選 3 張');return}
+ x.seqTxt={};if(bt)['flop','turn','river'].forEach(st=>{const q=HPS[st].seq||[];if(q.length)x.seqTxt[st]=q.map(a=>`${a.pos&&FL.multi?a.pos:WHO[a.who]}${a.ai?'全下':AW[a.a]}${a.amt?' '+(Math.round(a.amt*10)/10)+'BB':''}`).join(' → ')});
  x.board=bt;x.hc=HC[0]&&HC[1]?HC.map(cardTxt).join(''):(/^([2-9TJQKA][shdc]){2}$/i.test($('hlHand').value.trim())?$('hlHand').value.trim():'');x.vcards=VC[0]&&VC[1]?VC.map(cardTxt).join(''):'';x.why=(A.reasons||[]).slice(0,2);x.gtoTop=rows[0]?rows[0].lab:'';x.post=bt?analyzePost(ov,h,$('hlHand').value,k,bt,streets,x.vcards):[];if(bt&&Object.keys(streets).length&&!x.post.length)toast('翻牌前這條路線（例如全下或棄牌）不分析翻後');
  Store.saveHand(x);hlReset();const pbad=(x.post||[]).filter(p=>p.cls==='neg').length;if(pbad){setTimeout(()=>toast(`翻後有 ${pbad} 條街跟 GTO 差很多，看下面的教練分析`),1600)}toast(cls==='pos'?'已記錄 ✓ 這手打得對':cls==='warnc'?'已記錄 △ 可以，但不是最常見的打法':'已記錄 ✗ 這手跟 GTO 差很多，看下面的檢討')}
 let HLF=false;
@@ -2039,7 +2088,7 @@ function renderWeakCard(){if(NOV||PR.view==='sum')return'';if(!isPro())return'';
 /* ---------- 整手牌模式 (full-hand play) ---------- */
 let PRTAB='pre';try{PRTAB=localStorage.getItem('prTab')||'pre'}catch(e){}
 const FH={get on(){return PRTAB==='full'},len:5,round:null,g:null,busy:false};try{FH.len=+localStorage.getItem('fhLen')||5}catch(e){}
-const FHS={n:6,bb:100,randBB:false,game:'cash',stages:['bubble'],opp:'gto',oppId:''};try{Object.assign(FHS,JSON.parse(localStorage.getItem('fhSet')||'{}'))}catch(e){}
+const FHS={n:6,bb:100,randBB:false,game:'cash',stages:['bubble'],opp:'gto',oppId:'',mw:0};try{Object.assign(FHS,JSON.parse(localStorage.getItem('fhSet')||'{}'))}catch(e){}
 function fhSetSave(){try{localStorage.setItem('fhSet',JSON.stringify(FHS))}catch(e){}}
 function noteSelHTML(id,cur){if(!PLAYERS.length)return `<div class="mut" style="margin-top:6px;font-size:12.5px">還沒有對手筆記，先到「對手」分頁新增玩家。</div>`;return `<select id="${id}" style="margin-top:8px;width:100%">${PLAYERS.map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${esc(p.name)}（${esc(STYLE[p.style||'unknown']||'未知')}）</option>`).join('')}</select>`}
 function noteP(id){const pl=PLAYERS.find(x=>x.id===id)||PLAYERS[0];if(!pl)return null;const P=prof(pl);P.nm=pl.name;P.pid=pl.id;return P}
@@ -2081,7 +2130,7 @@ function fhPreAnswer(k){const G=FH.g;if(!G||G.street!=='pre')return;const q=G.q,
  G.dec.push({st:'pre',pre:true,act:k,actLab:opt.lab,cls,f:Math.round(f*100),rows,ex:!!q.E,gto:rows.map(r=>`${r.lab} ${Math.round(r.f*100)}%`).join('／'),why:[...(q.E&&q.E.notes?q.E.notes.slice(0,2):[]),...(A.reasons||[]).slice(0,q.E?1:3)]});
  try{logPractice(q,A,opt,o,f,cls)}catch(e){}
  {const ov=G.over,amt=labAmt(opt.lab);const me=simpLab(opt.lab)+(amt?' '+amt:'');const vp=G.vill;
-  if(ov.situ==='vsopen')G.log.push({st:'pre',who:'v',txt:'加注 '+ov.openSize,pos:ov.opener});
+  if(ov.situ==='vsopen'){G.log.push({st:'pre',who:'v',txt:'加注 '+ov.openSize,pos:ov.opener});coldSeats(ov).forEach(cp=>G.log.push({st:'pre',who:'v',txt:'跟注',pos:cp}))}
   if(ov.situ==='limp')G.log.push({st:'pre',who:'v',txt:'Limp',pos:(ov.limpSeats||[])[0]||vp});
   if(ov.situ==='vs3b'){G.log.push({st:'pre',who:'me',txt:'加注 '+ov.myOpen});G.log.push({st:'pre',who:'v',txt:'3bet '+ov.tbSize,pos:ov.tb})}
   G.log.push({st:'pre',who:'me',txt:me})}
@@ -2099,17 +2148,19 @@ function fhPreAnswer(k){const G=FH.g;if(!G||G.street!=='pre')return;const q=G.q,
  {const P=q.P;if(P&&(P.st==='fish'||P.st==='station')&&Math.random()<.4){const top=topPct(P.st==='station'?50:42);const L2=rangeCombos(Object.fromEntries([...top].map(h=>[h,1])),G.hc.map(cInt));if(L2.length){const pk=L2[(Math.random()*L2.length)|0].c;vc=pk.map(ci=>({r:R[12-(ci>>2)],s:SUITS[ci&3][0]}))}}}
  G.vc=vc;G.pot=fhR(lr.pot);G.rem=fhR(lr.stack);G.inv=fhR(Math.max(0,G.bbs-lr.stack));G.dead=fhR(Math.max(0,G.pot-2*G.inv));
  if(line==='lp'){if(G.over.pos==='SB')G.log.push({st:'pre',who:'v',txt:'過牌'})}else if(k!=='call')G.log.push({st:'pre',who:'v',txt:'跟注'});
- const d=fhDeck([...G.hc,...vc]);G.deck=d;G.board=d.slice(0,3);G.street='flop';G.me=0;G.v=0;G.checks=0;G.turnWho=G.ip?'v':'me';
+ G.mw=false;try{if(+FHS.mw&&!/^p[34]/.test(line)&&G.over.n>=3&&G.rem>3)fhMwSetup(G)}catch(e){G.mw=false}
+ if(!G.mw){const cs=coldSeats(G.over);if(cs.length){const add=cs.reduce((a,cp)=>a+Math.max(0,(+G.over.openSize||0)-fhBlind(cp)),0);G.pot=fhR(G.pot+add);G.dead=fhR((G.dead||0)+add)}}
+ const d=fhDeck([...G.hc,...vc,...(G.mw?G.xs.flatMap(x=>x.vc):[])]);G.deck=d;G.board=d.slice(0,3);G.street='flop';G.me=0;G.v=0;G.checks=0;G.turnWho=G.ip?'v':'me';
  renderFH();fhStep()}
 function fhBlind(p){return p==='BB'?1:p==='SB'?.5:0}
-function fhDead(G){return 1.5-fhBlind(G.over.pos)-fhBlind(G.vill)}
+function fhDead(G){return 1.5-fhBlind(G.over.pos)-fhBlind(G.vill)+coldSeats(G.over).filter(cp=>cp!==G.vill).reduce((a,cp)=>a+Math.max(0,(+G.over.openSize||0)-fhBlind(cp)),0)}
 function fhPrePot(G){try{const act=seatActions(G.q);const L=POS[G.over.n];let pot=0;L.forEach(p=>{const a=act[p];if(a.amt)pot+=a.amt;else if(a.post)pot+=a.post;else if(p==='SB'&&a.st==='fold')pot+=.5;else if(p==='BB'&&a.st==='fold')pot+=1});return Math.max(1.5,pot)}catch(e){return 1.5}}
 function fhVillHandAny(G){const d=fhDeck(G.hc);const top=topPct(30);for(let i=0;i<60;i++){const a=d[i*2],b=d[i*2+1];let x=a.r,y=b.r;if(ri(x)>ri(y))[x,y]=[y,x];const h=x===y?x+y:x+y+(a.s===b.s?'s':'o');if(top.has(h))return[a,b]}return[d[0],d[1]]}
 /* --- postflop engine --- */
-function fhState(G){const seq=G.seq[G.street];let me=0,v=0,checks=0,end=null;for(const a of seq){if(a.a==='fold'){end='fold_'+a.who;break}if(a.a==='check')checks++;else if(a.a==='call'){if(a.who==='me')me=v;else v=me;end=Math.max(me,v)>=G.rem-1e-6?'allin':'call'}else if(a.a==='bet'||a.a==='raise'){if(a.who==='me')me=a.amt;else v=a.amt}}
+function fhState(G){if(G.mw)return fhStateM(G);const seq=G.seq[G.street];let me=0,v=0,checks=0,end=null;for(const a of seq){if(a.a==='fold'){end='fold_'+a.who;break}if(a.a==='check')checks++;else if(a.a==='call'){if(a.who==='me')me=v;else v=me;end=Math.max(me,v)>=G.rem-1e-6?'allin':'call'}else if(a.a==='bet'||a.a==='raise'){if(a.who==='me')me=a.amt;else v=a.amt}}
  if(!end&&checks>=2)end='check';return{me,v,end,top:Math.max(me,v)}}
 function fhNextWho(G){const seq=G.seq[G.street];if(!seq.length)return G.ip?'v':'me';return seq[seq.length-1].who==='me'?'v':'me'}
-function fhStep(){const G=FH.g;if(!G||G.view!=='play'||G.street==='pre')return;const s=fhState(G);
+function fhStep(){const G=FH.g;if(!G||G.view!=='play'||G.street==='pre')return;if(G.mw)return fhStepM();const s=fhState(G);
  if(s.end){if(s.end==='fold_me'){return fhEnd('fold_me',-fhR(G.inv+s.me))}
   if(s.end==='fold_v'){return fhEnd('fold_v',fhR(G.pot+s.v-G.inv))}
   // street closed
@@ -2120,6 +2171,40 @@ function fhStep(){const G=FH.g;if(!G||G.view!=='play'||G.street==='pre')return;c
  const who=fhNextWho(G);
  if(who==='v'){FH.busy=true;renderFH();setTimeout(()=>{FH.busy=false;if(FH.g!==G)return;const a=fhBot(G,s);G.seq[G.street].push(a);G.log.push({st:G.street,who:'v',txt:fhActTxt(a,G)});renderFH();setTimeout(fhStep,250)},650)}
  else{G.opts=fhHeroOpts(G,s);renderFH()}}
+function fhMwSetup(G){const L=POS[G.over.n];const hi=L.indexOf(G.over.pos);const cold=coldSeats(G.over).filter(p=>p!==G.vill);const cand=L.filter((p,i)=>i>hi&&p!==G.vill&&!cold.includes(p));const want=Math.max(0,(Math.random()<.55?1:2)-cold.length);const pick=cold.slice();const pool=cand.slice();
+ while(pick.length<cold.length+want&&pool.length){let p=pool.includes('BB')&&Math.random()<.6?'BB':pool[(Math.random()*pool.length)|0];pick.push(p);pool.splice(pool.indexOf(p),1)}if(!pick.length)return;
+ const xw={};expand(MWCALL).forEach(h=>xw[h]=1);const dead=[...G.hc,...G.vc].map(cInt);const xs=[];
+ pick.forEach((pos,i)=>{let rw=null;try{rw=withSitu(fhSit(G),()=>{const pl=PS.line;PS.line=G.line;let w=null;try{w=seatCallRange(pos)}catch(e){}PS.line=pl;return w})}catch(e){}const Lc=rangeCombos(rw||xw,dead);if(!Lc.length)return;const c=Lc[(Math.random()*Lc.length)|0].c;dead.push(c[0],c[1]);xs.push({id:'x'+i,pos,vc:c.map(ci=>({r:R[12-(ci>>2)],s:SUITS[ci&3][0]}))})});if(!xs.length)return;
+ const pi=p=>p==='SB'?0:p==='BB'?1:L.indexOf(p)+2;G.xs=xs;G.idpos={me:G.over.pos,v:G.vill};G.cards={v:G.vc};xs.forEach(x=>{G.idpos[x.id]=x.pos;G.cards[x.id]=x.vc;G.pot=fhR(G.pot+Math.max(0,G.inv-fhBlind(x.pos)));if(!cold.includes(x.pos))G.log.push({st:'pre',who:'v',pos:x.pos,txt:'跟注'})});
+ G.order=Object.keys(G.idpos).sort((a,b)=>pi(G.idpos[a])-pi(G.idpos[b]));G.alive=G.order.slice();G.mw=true}
+function fhStateM(G){const seq=G.seq[G.street]||[];const al=new Set(G.alive);const c={};G.alive.forEach(i=>c[i]=0);let top=0,acted=new Set(),last=null;
+ for(const a of seq){const id=a.who==='me'?'me':(a.id||'v');last=id;if(a.a==='fold')al.delete(id);else if(a.a==='check')acted.add(id);else if(a.a==='call'){c[id]=top;acted.add(id)}else{c[id]=a.amt;top=a.amt;acted=new Set([id])}}
+ const inL=G.order.filter(i=>al.has(i));const sum=Object.values(c).reduce((x,y)=>x+y,0);let next=null;
+ if(al.has('me')&&inL.length>1){const N=G.order.length,st=last?G.order.indexOf(last):-1;for(let k=1;k<=N;k++){const id=G.order[(st+k+N)%N];if(!al.has(id))continue;if(!acted.has(id)||c[id]<top-1e-9){next=id;break}}}
+ const v=Math.max(0,...inL.filter(i=>i!=='me').map(i=>c[i]),...Object.keys(c).filter(i=>i!=='me').map(i=>c[i]));
+ const end=!al.has('me')?'fold_me':inL.length===1?'fold_v':next?null:(top>=G.rem-1e-6?'allin':'closed');return{me:c.me||0,v,top,end,sum,inL,next,c,nopp:inL.length-1}}
+function fhStepM(){const G=FH.g;const s=fhStateM(G);
+ if(s.end==='fold_me')return fhEnd('fold_me',-fhR(G.inv+s.me));
+ if(s.end==='fold_v')return fhEnd('fold_v',fhR(G.pot+s.sum-s.me-G.inv));
+ if(s.end){G.pot=fhR(G.pot+s.sum);G.inv=fhR(G.inv+s.me);G.rem=fhR(Math.max(0,G.rem-s.top));G.alive=s.inL;
+  if(s.end==='allin'||G.rem<=1e-6){G.board=G.deck.slice(0,5);return fhShowdownM()}
+  if(G.street==='river')return fhShowdownM();
+  G.street=G.street==='flop'?'turn':'river';G.board=G.deck.slice(0,G.street==='turn'?4:5);renderFH();return setTimeout(fhStep,350)}
+ if(s.next==='me'){G.think=null;G.opts=fhHeroOpts(G,s);renderFH();return}
+ FH.busy=true;G.think=s.next;renderFH();const id=s.next;setTimeout(()=>{FH.busy=false;if(FH.g!==G)return;let a;try{a=fhBotM(G,s,id)}catch(e){a={who:'v',id,a:s.top-s.c[id]>1e-9?'fold':'check'}}G.seq[G.street].push(a);G.log.push({st:G.street,who:'v',pos:G.idpos[id],txt:fhActTxt(a,G)});G.think=null;renderFH();setTimeout(fhStep,250)},600)}
+function fhBotM(G,s,id){const BS=id==='v'?fhBotStyle(G):{call:0,bluff:1,value:1,raise:1};const vci=G.cards[id].map(cInt),bi=G.board.map(cInt);const n=Math.max(1,s.inL.length-1);
+ const HLs=rangeCombos(G.lr.hero,[...vci,...bi]);const xw={};expand(MWCALL).forEach(h=>xw[h]=1);const XL=rangeCombos(xw,[...vci,...bi]);const lists=[HLs.length?HLs:[{c:G.hc.map(cInt),w:1}]];for(let i=1;i<n;i++)lists.push(XL);
+ let eq=1/(n+1);try{eq=equityN(vci,bi,lists,G.street==='river'?220:180)}catch(e){}const eqN=Math.min(.99,eq*(n+1)/2);
+ const P=G.pot+s.sum,rem=G.rem;const D=describe(vci,bi);const draw=D.draws.some(d=>!d.includes('後門'))&&G.street!=='river';const r=Math.random();const toCall=s.top-s.c[id];const mk=Math.pow(.5,n-1);
+ if(toCall<=1e-9){let bet=false;if(eqN>.72)bet=r<.8*BS.value;else if(eqN>.6)bet=r<.4*BS.value;else if(draw)bet=r<.4*Math.min(1.5,BS.bluff)*Math.max(.4,mk);else if(eqN<.3)bet=r<Math.min(.6,(G.street==='river'?.28:.2)*BS.bluff)*mk;else bet=r<.08;
+  if(bet){const sz=G.street==='flop'?(eqN>.75||draw?.66:.33):G.street==='turn'?.66:.75;const amt=Math.min(rem,Math.max(1,fhR(P*sz)));return{who:'v',id,a:'bet',amt,ai:amt>=rem-1e-6}}return{who:'v',id,a:'check'}}
+ const req=toCall/(P+toCall);const vsAI=s.top>=rem-1e-6;
+ if(!vsAI&&eqN>.9&&r<Math.min(.8,.45*BS.raise)){const amt=Math.min(rem,fhR(s.top*3));return{who:'v',id,a:'raise',amt,ai:amt>=rem-1e-6}}
+ if(!vsAI&&draw&&G.street==='flop'&&r<.08*BS.raise*mk){const amt=Math.min(rem,fhR(s.top*3));return{who:'v',id,a:'raise',amt,ai:amt>=rem-1e-6}}
+ const margin=(draw?.05:0)+(Math.random()-.5)*.07-BS.call-.02*(n-1);return eq+margin>=req?{who:'v',id,a:'call'}:{who:'v',id,a:'fold'}}
+function fhShowdownM(){const G=FH.g;const bi=G.board.map(cInt);const hv=ev([...G.hc.map(cInt),...bi]);const opp=G.alive.filter(i=>i!=='me').map(i=>({id:i,pos:G.idpos[i],vc:G.cards[i],val:ev([...G.cards[i].map(cInt),...bi])}));
+ let best=opp[0];opp.forEach(o=>{if(o.val>best.val)best=o});const ties=opp.filter(o=>o.val===hv).length;const pot=G.pot,inv=G.inv;const net=hv>best.val?fhR(pot-inv):hv<best.val?-fhR(inv):fhR(pot/(1+ties)-inv);
+ G.vc=best.vc;G.sdPos=best.pos;G.sdAll=opp.map(o=>({pos:o.pos,vc:o.vc,name:describe(o.vc.map(cInt),bi).name,best:o===best}));G.sd={hv,vv:best.val,win:hv>best.val?1:hv<best.val?-1:0,hn:describe(G.hc.map(cInt),bi).name,vn:describe(best.vc.map(cInt),bi).name};return fhEnd('showdown',net)}
 function fhActTxt(a,G){if(a.a==='check')return'過牌';if(a.a==='fold')return'棄牌';if(a.a==='call')return'跟注';const ai=a.amt>=G.rem-1e-6;return (ai?'全下 ':a.a==='bet'?'下注 ':'加注到 ')+fhR(a.amt)}
 function fhBotStyle(G){const st=G.q&&G.q.P?G.q.P.st:'tag';return({tag:{call:0,bluff:1,value:1,raise:1},lag:{call:-.03,bluff:1.9,value:1.1,raise:1.6},fish:{call:-.1,bluff:.5,value:.8,raise:.6},station:{call:-.18,bluff:.25,value:.85,raise:.4},nit:{call:.08,bluff:.3,value:.9,raise:.8},maniac:{call:-.08,bluff:2.5,value:1.2,raise:2.2}})[st]||{call:0,bluff:1,value:1,raise:1}}
 function fhBot(G,s){const facing=s.me>s.v;const BS=fhBotStyle(G);const vci=G.vc.map(cInt),bi=G.board.map(cInt);
@@ -2136,7 +2221,7 @@ function fhBot(G,s){const facing=s.me>s.v;const BS=fhBotStyle(G);const vci=G.vc.
 function fhMergeAI(rows,toCall){let call=0,fold=0;rows.forEach(r=>{if(r.k==='fold'||/^棄牌/.test(r.lab))fold+=r.f;else call+=r.f});const out=[];const cr=rows.find(r=>/^跟注/.test(r.lab))||rows.find(r=>r.k!=='fold');const fr=rows.find(r=>r.k==='fold'||/^棄牌/.test(r.lab));if(call>.005)out.push(Object.assign({},cr||{},{k:'call',lab:`跟注全下 ${toCall}BB`,f:call,cls:'call',col:(cr&&cr.col)||'#2fbf71'}));if(fold>.005)out.push(Object.assign({},fr||{},{k:'fold',lab:'棄牌 Fold',f:fold,cls:'fold',col:(fr&&fr.col)||'#5c6f66'}));return out.sort((a,b)=>b.f-a.f)}
 function fhGTO(G,s){const facing=s.v>s.me;const vsR=facing&&s.me>0;let rows=[],X={};
  const save=JSON.parse(JSON.stringify(PS));
- withSitu(fhSit(G),()=>{const lr=G.lr;PS.opp=1;PS.board=[0,1,2,3,4].map(j=>j<G.board.length?G.board[j]:null);PS.line=G.line;PS.ip=lr.ip;PS.aggr=lr.aggr;PS.pot=fhR(G.pot+2*s.me);PS.stack=Math.max(.5,fhR(G.rem-s.me));PS.facing=facing?'bet':'none';PS.bet=facing?fhR(s.v-s.me):0;PS.vsRaise=vsR;PS.range='auto';
+ withSitu(fhSit(G),()=>{const lr=G.lr;PS.opp=G.mw?Math.max(1,s.nopp||1):1;PS.noLib=!!G.mw;{const xo=G.mw&&s.inL?s.inL.filter(i=>i!=='me'&&i!=='v').map(i=>G.idpos[i]):[];if(G.mw&&s.inL&&!s.inL.includes('v')&&xo.length){PS.vilSeat=xo[0];PS.oppSeats=xo.slice(1)}else{PS.vilSeat=null;PS.oppSeats=xo}}PS.board=[0,1,2,3,4].map(j=>j<G.board.length?G.board[j]:null);PS.line=G.line;PS.ip=G.mw&&s.inL?s.inL[s.inL.length-1]==='me':lr.ip;PS.aggr=lr.aggr;PS.pot=G.mw?fhR(G.pot+s.sum-Math.max(0,s.v-s.me)):fhR(G.pot+2*s.me);PS.stack=Math.max(.5,fhR(G.rem-s.me));PS.facing=facing?'bet':'none';PS.bet=facing?fhR(s.v-s.me):0;PS.vsRaise=vsR;PS.range='auto';
   RNGS.post=null;window.LASTPX=null;try{runPost();rows=RNGS.post||[]}catch(e){rows=[]}X=window.LASTPX||{}});
  if(rows.length&&facing&&s.v>=G.rem-1e-6)rows=fhMergeAI(rows,fhR(Math.min(G.rem,s.v)-s.me));
  if(!rows.length&&G.q&&G.q.P){withSitu(fhSit(G,{qStyle:'none',qTags:[]}),()=>{RNGS.post=null;window.LASTPX=null;try{runPost();rows=RNGS.post||[]}catch(e){rows=[]}X=window.LASTPX||{}})}
@@ -2187,20 +2272,20 @@ function fhInfoBar(G){const q=G.q,o=q.over;const role=(ROLES.find(x=>x[0]===o.ro
 function fhHist(G){const parts=[];let cur=null;G.log.forEach(l=>{if(l.st!==cur){cur=l.st;parts.push(`<span class="fhst">${FHSTN[l.st]}${l.st!=='pre'?' '+G.board.slice(0,l.st==='flop'?3:l.st==='turn'?4:5).slice(l.st==='flop'?0:l.st==='turn'?3:4).map(c=>`<b class="bc s-${c.s}">${c.r==='T'?'10':c.r}${SUITS.find(x=>x[0]===c.s)[1]}</b>`).join(''):''}</span>`)}if(l.who==='sys')return;parts.push(`<span class="fhh ${l.who}">${l.who==='me'?G.over.pos:(l.pos||G.vill)} ${esc(l.txt)}</span>`)});return `<div class="fhhist">${parts.join('')}</div>`}
 function fhTable(G){const L=POS[G.over.n],N=L.length,hi=L.indexOf(G.over.pos);const s=G.street!=='pre'&&G.view==='play'?fhState(G):{me:0,v:0};
  const lastV=[...(G.seq[G.street]||[])].reverse().find(a=>a.who==='v');const lastM=[...(G.seq[G.street]||[])].reverse().find(a=>a.who==='me');
- let seats='';L.forEach((p,i)=>{const k=(i-hi+N)%N;const ang=Math.PI/2+k*2*Math.PI/N;const x=50+44*Math.cos(ang),y=50+40*Math.sin(ang);const me=p===G.over.pos,vl=p===G.vill;const fold=!me&&!vl;
-  const used=(G.bbs||0)-G.rem;const hb=Math.max(G.bbs||0,G.q.bbs||0),vb=Math.max(G.bbs||0,G.q.vbb||G.bbs||0);const stack=me?hb-used-s.me:vl?vb-used-s.v:null;const b=vl&&lastV?`<div class="bub ${lastV.ai?'allin':lastV.a==='check'?'post':''}">${fhActTxt(lastV,G)}</div>`:me&&lastM?`<div class="bub mine">${fhActTxt(lastM,G)}</div>`:'';
-  seats+=`<div class="seat ${fold?'folded':''} ${me?'hero':''} ${vl&&FH.busy?'think':''}" style="left:${x}%;top:${y}%"><div class="pn">${me?'我':''} ${p}</div><div class="ps">${stack!=null?fhR(stack)+'BB':''}</div>${p==='BTN'?'<div class="dealer">D</div>':''}${b}</div>`});
+ let seats='';L.forEach((p,i)=>{const k=(i-hi+N)%N;const ang=Math.PI/2+k*2*Math.PI/N;const x=50+44*Math.cos(ang),y=50+40*Math.sin(ang);const me=p===G.over.pos,vl=p===G.vill;const xid=G.mw?Object.keys(G.idpos).find(i=>G.idpos[i]===p):null;const xin=G.mw&&xid&&(s.inL||G.alive||[]).includes(xid);const fold=G.mw?!me&&!xin:!me&&!vl;const lastX=G.mw&&xid&&xid!=='me'?[...(G.seq[G.street]||[])].reverse().find(a=>a.who==='v'&&(a.id||'v')===xid):null;
+  const used=(G.bbs||0)-G.rem;const hb=Math.max(G.bbs||0,G.q.bbs||0),vb=Math.max(G.bbs||0,G.q.vbb||G.bbs||0);const stack=me?hb-used-s.me:G.mw?(xin?vb-used-((s.c||{})[xid]||0):null):vl?vb-used-s.v:null;const b=G.mw&&!me?(lastX&&G.view==='play'?`<div class="bub ${lastX.ai?'allin':lastX.a==='check'?'post':lastX.a==='fold'?'fold':''}">${fhActTxt(lastX,G)}</div>`:''):vl&&lastV?`<div class="bub ${lastV.ai?'allin':lastV.a==='check'?'post':''}">${fhActTxt(lastV,G)}</div>`:me&&lastM?`<div class="bub mine">${fhActTxt(lastM,G)}</div>`:'';
+  seats+=`<div class="seat ${fold?'folded':''} ${me?'hero':''} ${(G.mw?G.think===xid:vl)&&FH.busy?'think':''}" style="left:${x}%;top:${y}%"><div class="pn">${me?'我':''} ${p}</div><div class="ps">${stack!=null?fhR(stack)+'BB':''}</div>${p==='BTN'?'<div class="dealer">D</div>':''}${b}</div>`});
  const show=G.view==='sum'&&G.vc;
- return `<div class="felt fhfelt"><div class="pot">底池 ${fhR(G.pot+s.me+s.v)}BB</div><div class="fhboard">${[0,1,2,3,4].map(i=>G.board[i]?fhCardHTML(G.board[i],1):'<div class="pc sm empty"></div>').join('')}</div>${seats}<div class="hcards">${G.hc.map(c=>fhCardHTML(c)).join('')}</div>${show?`<div class="vcards">${G.vc.map(c=>fhCardHTML(c,1)).join('')}</div>`:''}</div>`}
+ return `<div class="felt fhfelt"><div class="pot">底池 ${fhR(G.mw?G.pot+(s.sum||0):G.pot+s.me+s.v)}BB</div><div class="fhboard">${[0,1,2,3,4].map(i=>G.board[i]?fhCardHTML(G.board[i],1):'<div class="pc sm empty"></div>').join('')}</div>${seats}<div class="hcards">${G.hc.map(c=>fhCardHTML(c)).join('')}</div>${show?`<div class="vcards">${G.vc.map(c=>fhCardHTML(c,1)).join('')}</div>`:''}</div>`}
 function fhDecRow(d,i,G){if(d.skip)return `<div class="fhdec"><span class="mut">·</span><div><small>${FHSTN[d.st]}</small><b>${esc(simpLab(d.actLab)||d.actLab)}</b></div><span class="mut" style="font-size:12px">這步算不出 GTO，不計分</span><span></span></div>`;const head=`<div class="fhdec ${d.cls}" data-fd="${i}"><span class="${d.cls}">${gIcon(d.cls)}</span><div><small>${FHSTN[d.st]}</small><b>${esc(simpLab(d.actLab)||d.actLab)}</b></div><span class="fhok ${d.cls}">${d.cls==='pos'?(d.det&&d.det.src==='est'?'合理':'答對了！'):d.cls==='warnc'?(d.det&&d.det.src==='est'?'僅供參考':WOK(d)?'可以':'少見打法'):'答錯'}${d.xp!=null?` <small>${d.xp>0?'+':''}${d.xp}</small>`:''}${d.evPct!=null?`<small class="evs">${d.evPct<=1?'EV 無損失':`EV −${d.evBB>=.1?d.evBB:'<0.1'}BB`}</small>`:!d.pre?`<small class="evs mut">${d.det&&d.det.src==='solver'?'solver':'估算'}</small>`:''}</span><span class="mut">›</span></div>`;
  const body=d.pre?`<div class="fhdet" id="fhd${i}" hidden>${d.ex?'<div class="mut" style="margin:4px 0">🎯 針對這個對手的最佳打法</div>':''}${stratHTML(d.rows)}${preHTML({cls:d.cls,actLab:d.actLab,gto:d.gto,why:d.why})}</div>`:`<div class="fhdet" id="fhd${i}" hidden><div class="mut" style="margin:4px 0">${d.det&&d.det.src==='est'?'估算頻率':'GTO 頻率'}</div>${stratHTML(d.rows)}${d.rows2?`<div class="mut" style="margin:8px 0 4px">🎯 針對這個對手的調整${d.usedEx?'（你的選擇符合這個調整）':''}</div>${stratHTML(d.rows2)}`:''}${decHTML(d,G.vc?G.vc.map(c=>c.r+c.s).join(''):'')}</div>`;return head+body}
 function fhSumHTML(G){const all=G.dec.length&&G.dec.every(d=>d.cls==='pos'||d.skip);const bad=G.dec.filter(d=>d.cls==='neg').length;const R0=FH.round;
  const title=all?'全部符合 GTO！':bad?`有 ${bad} 個決定跟 GTO 差很多`:'打得不錯，有小地方可以更好';
  const how={fold_me:'你棄牌',fold_v:'對手棄牌，你贏下底池',showdown:G.sd?(G.sd.win>0?`比牌你贏（${esc(G.sd.hn)} 勝 ${esc(G.sd.vn)}）`:G.sd.win<0?`比牌你輸（${esc(G.sd.vn)} 勝 ${esc(G.sd.hn)}）`:'比牌平分'):''}[G.how]||'';
  const last=R0&&R0.items.length>=R0.len;
- return `<div class="fhsum"><div class="mut">第 ${R0?R0.items.length:1}/${R0?R0.len:1} 手</div><h2 style="margin:4px 0">${all?'🎉 ':''}${title}</h2><div class="mut">${how}</div>
+ return `<div class="fhsum"><div class="mut">第 ${R0?R0.items.length:1}/${R0?R0.len:1} 手</div><h2 style="margin:4px 0">${all?'🎉 ':''}${title}</h2><div class="mut">${how}</div>${G.mw&&G.xs?`<div class="mut" style="margin-top:3px">👥 多人底池：${G.xs.length+2} 人看翻牌${G.sdAll&&G.sdAll.length>1?'・攤牌：'+G.sdAll.map(o=>`${o.pos} ${o.vc.map(c=>(c.r==='T'?'10':c.r)+SUITS.find(x=>x[0]===c.s)[1]).join('')}（${esc(o.name)}）`).join('、'):''}</div>`:''}
   <div class="fhcards"><div><small>你的手牌</small><div class="row">${G.hc.map(c=>fhCardHTML(c,1)).join('')}</div></div>${G.board.length?`<div><small>公牌</small><div class="row">${G.board.map(c=>fhCardHTML(c,1)).join('')}</div></div>`:''}</div>
-  ${G.vc&&G.how!=='fold_me'||G.vc&&G.sd?`<div class="row" style="gap:8px;align-items:center;margin:6px 0"><small class="mut">對手 ${G.vill} 的牌</small>${G.vc.map(c=>fhCardHTML(c,1)).join('')}</div>`:''}
+  ${G.vc&&G.how!=='fold_me'||G.vc&&G.sd?`<div class="row" style="gap:8px;align-items:center;margin:6px 0"><small class="mut">對手 ${G.mw&&G.sdPos?G.sdPos:G.vill} 的牌</small>${G.vc.map(c=>fhCardHTML(c,1)).join('')}</div>`:''}
   <div class="fhnet ${G.net>=0?'pos':'neg'}">${G.net>=0?'+':''}${G.net}BB</div><div class="xpd ${G.xpd>=0?'pos':'neg'}" style="text-align:left">本手 ${G.xpd>=0?'+':''}${G.xpd} XP${G.xpBonus?'（含整手全對 +5）':''}</div>
   <div class="mut" style="margin:8px 0 4px">點每一步看 GTO 頻率和解析</div>${G.dec.map((d,i)=>fhDecRow(d,i,G)).join('')}
   <button class="btn pri" id="fhNext" style="width:100%;margin-top:12px">${last?'🏆 看這輪成績':'前往下一手 →'}</button></div>`}
@@ -2217,18 +2302,18 @@ function renderFH(){const v=$('v-prac');if(!v||!FH.on)return;const G=FH.g;const 
   ${FHS.game==='mtt'?'':`<div class="mut" style="margin-top:10px">我的籌碼（BB）</div><div class="chips" id="fhBB" style="margin-top:6px">${[25,40,60,100,150].map(b=>`<button class="chip ${!FHS.randBB&&FHS.bb===b?'on':''}" data-v="${b}">${b}</button>`).join('')}<button class="chip ${FHS.randBB?'on':''}" data-v="r">隨機</button></div>`}
   <div class="mut" style="margin-top:10px">牌局類型</div><div class="chips" id="fhG" style="margin-top:6px">${[['cash','現金桌'],['mtt','錦標賽']].map(([k,t])=>`<button class="chip ${FHS.game===k?'on':''}" data-v="${k}">${k==='mtt'&&!isPro()?'🔒 ':''}${t}</button>`).join('')}</div>
   ${FHS.game==='mtt'?`<div class="mut" style="margin-top:8px">比賽階段（可複選，籌碼深度和地位會隨機）</div><div class="chips" id="fhS" style="margin-top:6px">${STAGES.map(([k,t])=>`<button class="chip ${FHS.stages.includes(k)?'on':''}" data-v="${k}">${t}</button>`).join('')}</div>`:''}
-  <div class="mut" style="margin-top:10px">對手類型</div><div class="chips" id="fhO" style="margin-top:6px">${[['gto','標準對手'],['rand','隨機對手類型（練剝削）'],['note','📒 我的對手筆記']].map(([k,t])=>`<button class="chip ${FHS.opp===k?'on':''}" data-v="${k}">${k!=='gto'&&!isPro()?'🔒 ':''}${t}</button>`).join('')}</div>${FHS.opp==='note'?noteSelHTML('fhOid',FHS.oppId)+'<div class="mut" style="margin-top:4px;font-size:12.5px">對手會照你筆記裡他的風格、標籤和統計數據來打，評分同時看 GTO 和針對他的調整。</div>':''}
+  <div class="mut" style="margin-top:10px">底池人數</div><div class="chips" id="fhM" style="margin-top:6px">${[['0','單挑（1 位對手）'],['1','多人底池（2–3 位對手）']].map(([k,t])=>`<button class="chip ${String(+FHS.mw||0)===k?'on':''}" data-v="${k}">${t}</button>`).join('')}</div>${+FHS.mw?'<div class="mut" style="margin-top:4px;font-size:12px">多人底池沒有 solver 資料，翻後講評都是估算；每個對手會各自下注、跟注、棄牌。</div>':''}<div class="mut" style="margin-top:10px">對手類型</div><div class="chips" id="fhO" style="margin-top:6px">${[['gto','標準對手'],['rand','隨機對手類型（練剝削）'],['note','📒 我的對手筆記']].map(([k,t])=>`<button class="chip ${FHS.opp===k?'on':''}" data-v="${k}">${k!=='gto'&&!isPro()?'🔒 ':''}${t}</button>`).join('')}</div>${FHS.opp==='note'?noteSelHTML('fhOid',FHS.oppId)+'<div class="mut" style="margin-top:4px;font-size:12.5px">對手會照你筆記裡他的風格、標籤和統計數據來打，評分同時看 GTO 和針對他的調整。</div>':''}
   ${FHS.opp==='rand'?'<div class="mut" style="margin-top:4px;font-size:12.5px">對手會是緊凶、鬆凶、魚或跟注站，打法真的會不一樣（魚和跟注站很愛跟、鬆凶常詐唬）。評分會同時看 GTO 和針對他的調整。</div>':''}
   <div class="mut" style="margin-top:8px;font-size:12.5px">${libStatus()}。solver 目前涵蓋 26 種常見情境：各位置開池被跟的單挑底池、3bet／4bet 底池、小盲對大盲、limp 底池，以及 40BB／25BB 短籌碼；其他組合用估算，不顯示 EV。</div>
   <div class="mut" style="margin-top:10px">每輪手數</div><div class="chips" id="fhLen" style="margin-top:6px">${[5,10].map(n=>`<button class="chip ${FH.len===n?'on':''}" data-fl="${n}">${n} 手</button>`).join('')}</div>
   <button class="btn pri" id="fhGo" style="width:100%;margin-top:12px">開始 ${FH.len} 手</button></div>`+lvCardHTML(PR.stats)+`<div class="stat" style="margin:10px 0"><div><b>${acc}%</b><span>決定正確率</span></div><div><b>${st.hands}</b><span>累計手數</span></div><div><b class="${st.net>=0?'pos':'neg'}">${st.net>=0?'+':''}${fhR(st.net)}</b><span>累計輸贏 BB</span></div></div>`+limNote('fh','打 N 手完整手牌。')+pracStatsHTML();
   bindPrTabs(v);$('fhGo').onclick=()=>fhStart();$('fhLen').onclick=e=>{const b=e.target.closest('[data-fl]');if(!b)return;FH.len=+b.dataset.fl;try{localStorage.setItem('fhLen',FH.len)}catch(er){}renderFH()};
-  const cb=(id,fn)=>{const el=$(id);if(el)el.onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;fn(b.dataset.v);fhSetSave();renderFH()}};cb('fhN',v=>FHS.n=+v);cb('fhBB',v=>{if(v==='r')FHS.randBB=true;else{FHS.randBB=false;FHS.bb=+v}});cb('fhG',v=>FHS.game=v);cb('fhS',v=>{const i=FHS.stages.indexOf(v);if(i>=0){if(FHS.stages.length>1)FHS.stages.splice(i,1)}else FHS.stages.push(v)});cb('fhO',v=>FHS.opp=v);if(FHS.opp==='note'&&!FHS.oppId&&PLAYERS[0]){FHS.oppId=PLAYERS[0].id;fhSetSave()}{const el=$('fhOid');if(el)el.onchange=e=>{FHS.oppId=e.target.value;fhSetSave()}}v.querySelectorAll('[data-focus]').forEach(b=>b.onclick=()=>{PRTAB='pre';startFocus(b.dataset.focus)});const gr=$('goReport');if(gr)gr.onclick=()=>{document.querySelector('nav [data-v="coach"]').click();setTimeout(()=>$('coachBox').scrollIntoView(),50)};return}
+  const cb=(id,fn)=>{const el=$(id);if(el)el.onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;fn(b.dataset.v);fhSetSave();renderFH()}};cb('fhN',v=>FHS.n=+v);cb('fhBB',v=>{if(v==='r')FHS.randBB=true;else{FHS.randBB=false;FHS.bb=+v}});cb('fhG',v=>FHS.game=v);cb('fhS',v=>{const i=FHS.stages.indexOf(v);if(i>=0){if(FHS.stages.length>1)FHS.stages.splice(i,1)}else FHS.stages.push(v)});cb('fhO',v=>FHS.opp=v);cb('fhM',v=>FHS.mw=+v);if(FHS.opp==='note'&&!FHS.oppId&&PLAYERS[0]){FHS.oppId=PLAYERS[0].id;fhSetSave()}{const el=$('fhOid');if(el)el.onchange=e=>{FHS.oppId=e.target.value;fhSetSave()}}v.querySelectorAll('[data-focus]').forEach(b=>b.onclick=()=>{PRTAB='pre';startFocus(b.dataset.focus)});const gr=$('goReport');if(gr)gr.onclick=()=>{document.querySelector('nav [data-v="coach"]').click();setTimeout(()=>$('coachBox').scrollIntoView(),50)};return}
  const head=`<div class="card fhhead ${G.view==='sum'?'':'play'}"><div class="row" style="justify-content:space-between;align-items:center"><b>🃏 完整手牌練習</b><button class="btn sm" id="fhQuit">結束這輪</button></div><div class="mut" style="margin-top:4px">第 ${Math.min(R0.items.length+(G.view==='sum'?0:1),R0.len)} / ${R0.len} 手 ・ 本輪輸贏 ${(()=>{const n=fhR(R0.items.reduce((a,x)=>a+x.net,0));return (n>=0?'+':'')+n})()}BB</div><div class="pbar" style="margin-top:8px"><i style="width:${R0.items.length/R0.len*100}%"></i></div></div>`;
  let body='';
  if(G.view==='sum'){body=`<div class="card fhcard">${fhHist(G)}${G.street==='pre'&&!G.board.length?tableHTML(G.q):fhTable(G)}${fhSumHTML(G)}</div>`}
  else if(G.street==='pre'){const q=G.q;const opts=prOpts(q.A);body=`<div class="card fhcard fhplay"><div class="mut fhsub">${q.over.n}人桌 ・ ${q.bbs}BB</div>${fhInfoBar(G)}${tableHTML(q)}<div class="qtxt">${qText(q)}</div><div class="fhact"><div class="fhturn"><b>輪到你了</b></div><div class="ans">${opts.map(x=>`<button class="btn abtn c-${x.cls}" data-fp="${x.k}">${x.lab}</button>`).join('')}</div></div></div>`}
- else{const opts=G.opts||[];body=`<div class="card fhcard fhplay">${fhInfoBar(G)}${fhHist(G)}${fhTable(G)}<div class="fhact"><div class="fhturn">${FH.busy?`<span class="mut">${G.vill} 思考中…</span>`:opts.length?`<b>輪到你了</b> <span class="mut">（${G.ip?'你有位置':'你沒位置'}）</span>`:''}</div><div class="fhbtns">${opts.map((o,i)=>`<button class="btn abtn c-${o.cls}" data-fo="${i}">${o.lab}${o.sub?`<small>${o.sub}</small>`:''}</button>`).join('')}</div></div></div>`}
+ else{const opts=G.opts||[];body=`<div class="card fhcard fhplay">${fhInfoBar(G)}${fhHist(G)}${fhTable(G)}<div class="fhact"><div class="fhturn">${FH.busy?`<span class="mut">${G.mw&&G.think?G.idpos[G.think]:G.vill} 思考中…</span>`:opts.length?`<b>輪到你了</b> <span class="mut">（${G.ip?'你有位置':'你沒位置'}）</span>`:''}</div><div class="fhbtns">${opts.map((o,i)=>`<button class="btn abtn c-${o.cls}" data-fo="${i}">${o.lab}${o.sub?`<small>${o.sub}</small>`:''}</button>`).join('')}</div></div></div>`}
  v.innerHTML=tabs+head+body;bindPrTabs(v);fhFit();
  $('fhQuit').onclick=()=>{FH.round=null;FH.g=null;renderFH()};
  v.querySelectorAll('[data-fp]').forEach(b=>b.onclick=()=>fhPreAnswer(b.dataset.fp));
@@ -2316,12 +2401,12 @@ function showShareNotice(){try{if(localStorage.getItem('pk_notice_ok'))return}ca
 function renderAllData(){renderVillainSel();renderPlayers();renderSess();renderOppCharts();renderHL();renderHands();renderCoach();update()}
 renderGame();renderOpenSz();renderQOpp();renderN();renderPos();renderSitu();renderSlots();tools();initPost();['hlN','hlPos','hlSitu','hlVpos'].forEach(id=>$(id).addEventListener('change',()=>{const v=$(id).value;if(id==='hlN')HL.n=+v;if(id==='hlPos')HL.pos=v;if(id==='hlSitu')HL.situ=v;if(id==='hlVpos')HL.vpos=v;renderHL()}));
 $('hlBB').addEventListener('input',()=>{HL.bb=toBB($('hlBB').value)||100;renderHL();hlDraftSave()});$('hlHand').addEventListener('input',()=>{HC=[null,null];renderHL()});$('hlVsz').addEventListener('input',()=>{HL.vsz=$('hlVsz').value});$('hlVsz').addEventListener('change',renderHL);
-$('hlSituC').onclick=e=>{const b=e.target.closest('[data-su]');if(!b||b.disabled)return;HL.situ=b.dataset.su;HL.cold=0;$('hlAct').value='';HL.vsz='';$('hlVsz').value='';renderHL()};
+$('hlSituC').onclick=e=>{const b=e.target.closest('[data-su]');if(!b||b.disabled)return;HL.situ=b.dataset.su;HL.cold=0;HPS.seats=null;$('hlAct').value='';HL.vsz='';$('hlVsz').value='';renderHL()};
 $('hlActC').onclick=e=>{const b=e.target.closest('[data-ak]');if(!b)return;$('hlAct').value=b.dataset.ak;$('hlAmt').value='';renderHL()};$('hlAmt').addEventListener('input',()=>{const pots=hlStreetPots();['flop','turn','river'].forEach(st=>{const el=$('hpot_'+st);if(el)el.textContent=pots[st]})});hlBindCards();hlBindStreets();
 $('hlSign').onclick=e=>{const b=e.target.closest('[data-sg]');if(!b)return;hlSignClick(b.dataset.sg==='0'?2:+b.dataset.sg)};$('hlRes').addEventListener('input',()=>{HLRESMAN=true;hlDraftSave()});$('hlNote').addEventListener('input',hlDraftSave);
 $('hlUnit').onclick=e=>{const b=e.target.closest('[data-u]');if(!b)return;HLU.unit=b.dataset.u;try{localStorage.setItem('hlUnit',JSON.stringify(HLU))}catch(er){}$('hlBB').value=fU(HL.bb);renderHL()};
 $('hlBbv').addEventListener('change',()=>{const v=+$('hlBbv').value;if(v>0){HLU.bbv=v;try{localStorage.setItem('hlUnit',JSON.stringify(HLU))}catch(er){}$('hlBB').value=fU(HL.bb);renderHL()}});
-$('hlClear').onclick=()=>{hlReset();toast('已清空')};$('hlColdW').onclick=e=>{const b=e.target.closest('[data-cv]');if(!b)return;HL.cold=+b.dataset.cv;HPS.flop.x=null;renderHL();hlDraftSave()};$('hlMode').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;HL.mode=b.dataset.m;try{localStorage.setItem('hlMode',HL.mode)}catch(er){}hlModeUI();renderHL()};hlDraftLoad();$('hlBB').value=fU(HL.bb);$('hlSave').onclick=saveHL;$('hlTags').onclick=e=>{const b=e.target.closest('[data-tg]');if(!b)return;const t=b.dataset.tg;if(HLT.has(t))HLT.delete(t);else{HLT.add(t);if(!HLSIGN&&(t==='lose'||t==='win'))hlSignClick(t==='lose'?-1:1)}b.classList.toggle('on');hlDraftSave()};$('hlFilter').onclick=()=>{HLF=!HLF;$('hlFilter').textContent=HLF?'看全部':'只看失誤';renderHands()};renderHL();
+$('hlClear').onclick=()=>{hlReset();toast('已清空')};$('hlColdW').onclick=e=>{const b=e.target.closest('[data-cv]');if(!b)return;HL.cold=+b.dataset.cv;HPS.flop.x=null;HPS.seats=null;renderHL();hlDraftSave()};$('hlMode').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;HL.mode=b.dataset.m;try{localStorage.setItem('hlMode',HL.mode)}catch(er){}hlModeUI();renderHL()};hlDraftLoad();$('hlBB').value=fU(HL.bb);$('hlSave').onclick=saveHL;$('hlTags').onclick=e=>{const b=e.target.closest('[data-tg]');if(!b)return;const t=b.dataset.tg;if(HLT.has(t))HLT.delete(t);else{HLT.add(t);if(!HLSIGN&&(t==='lose'||t==='win'))hlSignClick(t==='lose'?-1:1)}b.classList.toggle('on');hlDraftSave()};$('hlFilter').onclick=()=>{HLF=!HLF;$('hlFilter').textContent=HLF?'看全部':'只看失誤';renderHands()};renderHL();
 $('nzTabs').onclick=e=>{const b=e.target.closest('[data-z]');if(!b)return;openZone(b.dataset.z)};NOV=false;Store.loadLocal();renderAllData();$('syncSt').textContent='本機';showShareNotice();renderPractice();
 
 setTimeout(()=>{try{tierNormalize();renderTier()}catch(e){}},0);
